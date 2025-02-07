@@ -3,33 +3,48 @@
 import React, { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { CheckCircle, Trash2, ChevronDown, ChevronRight } from "lucide-react"
-import { supabase } from "@/lib/supabase"
 import type { Project } from "@/types/database.types"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import NewProjectDialog from "@/components/NewProjectDialog"
 import EditProjectDialog from "@/components/EditProjectDialog"
+import { createClient } from "@/utils/supabase/client"
 
 export default function ProjectList() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [profile, setProfile] = useState<{ display_name: string } | null>(null)
   const router = useRouter()
 
   // State to control collapsible sections
   const [activeOpen, setActiveOpen] = useState(true)
   const [completedOpen, setCompletedOpen] = useState(true)
+  const supabase = createClient()
+  const [displayName, setDisplayName] = useState<string>()
 
-  // Check session and fetch profile
+  useEffect(()=>{
+    const getUser = async ()=>{
+    const { data: { session } } = await supabase.auth.getSession()
+    if(!session) return;
+    supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", session.user.id)
+          .single()
+          .then(res=>setDisplayName(res.data?.display_name));
+  }
+  getUser()
+  },[supabase])
+
+  // Removed the authentication check and profile fetching
   useEffect(() => {
     async function checkSessionAndFetchProfile() {
       const { data: { session } } = await supabase.auth.getSession()
+      console.log(session)
       if (!session) {
         router.push("/login")
       } else {
-        // Fetch the user's profile from the profiles table.
-        const { data: profileData, error: profileError } = await supabase
+        const {  error: profileError } = await supabase
           .from("profiles")
           .select("display_name")
           .eq("id", session.user.id)
@@ -37,35 +52,36 @@ export default function ProjectList() {
         if (profileError) {
           console.error("Error fetching profile:", profileError)
         } else {
-          setProfile(profileData)
+          // You could store the profile if needed
         }
       }
     }
     checkSessionAndFetchProfile()
-  }, [router])
+  }, [router, supabase])
 
   // Fetch projects list
   useEffect(() => {
-    fetchProjects()
-  }, [])
-
-  async function fetchProjects() {
-    try {
-      setLoading(true)
-      setError(null)
-      const { data, error } = await supabase
-        .from("projects")
-        .select("*")
-        .order("created_at", { ascending: false })
-      if (error) throw error
-      setProjects(data || [])
-    } catch (err) {
-      console.error("Error:", err)
-      setError("Failed to load projects")
-    } finally {
-      setLoading(false)
+    async function fetchProjects() {
+      try {
+        setLoading(true)
+        setError(null)
+        const { data, error } = await supabase
+          .from("projects")
+          .select("*")
+          .order("created_at", { ascending: false })
+        if (error) throw error
+        setProjects(data || [])
+      } catch (err) {
+        console.error("Error:", err)
+        setError("Failed to load projects")
+      } finally {
+        setLoading(false)
+      }
     }
-  }
+    fetchProjects()
+  }, [supabase])
+
+
 
   const toggleProjectCompletion = async (projectId: string, currentStatus: boolean) => {
     try {
@@ -130,9 +146,9 @@ export default function ProjectList() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
-      {/* Greeting section */}
+      {/* Greeting section (generic greeting now that authentication is removed) */}
       <div className="mb-4 text-xl font-medium text-center">
-        Good Ebening{profile?.display_name ? `, ${profile.display_name}` : ""}
+        Good Ebening, {displayName} 
       </div>
 
       {/* Header with NewProjectDialog */}

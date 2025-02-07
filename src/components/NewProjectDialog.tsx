@@ -11,15 +11,16 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { supabase } from "@/lib/supabase"
 import type { Project } from "@/types/database.types"
 import { Plus } from "lucide-react"
+import { createClient } from "@/utils/supabase/client"
 
 interface NewProjectDialogProps {
   onProjectCreated: (newProject: Project) => void
 }
 
 export default function NewProjectDialog({ onProjectCreated }: NewProjectDialogProps) {
+  const supabase = createClient();
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")

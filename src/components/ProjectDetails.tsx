@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { supabase } from "@/lib/supabase"
 import type { Project, Task, KPI } from "@/types/database.types"
 import { Card, CardContent } from "./ui/card"
 import {
@@ -21,6 +20,7 @@ import NewKPIDialog from "./NewKPIDialog"
 import { Select } from "./ui/select"
 import { Button } from "./ui/button"
 import EditKPIDialog from "./EditKPIDialog"
+import { createClient } from "@/utils/supabase/client"
 
 interface ProjectDetailsProps {
   id: string
@@ -39,6 +39,8 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
   // Collapsible states for tasks sections
   const [todoOpen, setTodoOpen] = useState(true)
   const [completedOpen, setCompletedOpen] = useState(true)
+
+  const supabase = createClient();
 
   // Fetch project details, tasks, and KPIs
   useEffect(() => {
@@ -83,7 +85,7 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
     }
 
     fetchProjectData()
-  }, [id])
+  }, [id, supabase])
 
   // Fetch profiles for assignment options
   useEffect(() => {

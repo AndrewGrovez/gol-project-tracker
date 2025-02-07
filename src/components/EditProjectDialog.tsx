@@ -10,9 +10,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { supabase } from "@/lib/supabase"
 import type { Project } from "@/types/database.types"
 import { Pencil } from "lucide-react"
+import { createClient } from "@/utils/supabase/client"
 
 interface EditProjectDialogProps {
   project: Project
@@ -20,6 +20,8 @@ interface EditProjectDialogProps {
 }
 
 export default function EditProjectDialog({ project, onProjectUpdated }: EditProjectDialogProps) {
+  const supabase = createClient();
+
   const [open, setOpen] = useState(false)
   const [name, setName] = useState(project.name)
   const [description, setDescription] = useState(project.description || "")

@@ -10,11 +10,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { supabase } from "@/lib/supabase"
 import type { Task } from "@/types/database.types"
 import { DatePicker, TimePicker } from "rsuite"
 import { Pencil } from "lucide-react"
 import { Select } from "@/components/ui/select"
+import { createClient } from "@/utils/supabase/client"
 
 interface EditTaskDialogProps {
   task: Task
@@ -22,6 +22,8 @@ interface EditTaskDialogProps {
 }
 
 export default function EditTaskDialog({ task, onTaskUpdated }: EditTaskDialogProps) {
+  const supabase = createClient();
+
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description || "")
@@ -57,7 +59,7 @@ export default function EditTaskDialog({ task, onTaskUpdated }: EditTaskDialogPr
       }
     }
     fetchProfiles()
-  }, [])
+  }, [supabase])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

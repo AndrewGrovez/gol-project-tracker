@@ -10,7 +10,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { supabase } from "@/lib/supabase"
 import type { Task } from "@/types/database.types"
 import { Plus } from "lucide-react"
 
@@ -18,6 +17,7 @@ import { Plus } from "lucide-react"
 import { DatePicker, TimePicker } from "rsuite"
 import "rsuite/dist/rsuite.min.css"
 import { Select } from "@/components/ui/select"
+import { createClient } from "@/utils/supabase/client"
 
 interface NewTaskDialogProps {
   projectId: string
@@ -25,6 +25,7 @@ interface NewTaskDialogProps {
 }
 
 export default function NewTaskDialog({ projectId, onTaskCreated }: NewTaskDialogProps) {
+  const supabase = createClient();
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")

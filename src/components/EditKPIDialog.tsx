@@ -10,10 +10,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { supabase } from "@/lib/supabase"
 import type { KPI } from "@/types/database.types"
 import { Pencil } from "lucide-react"
 import { DatePicker } from "rsuite"
+import { createClient } from "@/utils/supabase/client"
 
 interface EditKPIDialogProps {
   kpi: KPI
@@ -21,6 +21,7 @@ interface EditKPIDialogProps {
 }
 
 export default function EditKPIDialog({ kpi, onKPIUpdated }: EditKPIDialogProps) {
+  const supabase = createClient();
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState(kpi.title)
   const [measureDate, setMeasureDate] = useState<Date | null>(
