@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "My Protected App",
-  description: "An app that requires login",
+  title: "Gol Projects",
+  description: "Getting stuff done.",
 };
 
 export default function RootLayout({

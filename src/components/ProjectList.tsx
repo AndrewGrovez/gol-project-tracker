@@ -36,7 +36,6 @@ export default function ProjectList() {
   getUser()
   },[supabase])
 
-  // Removed the authentication check and profile fetching
   useEffect(() => {
     async function checkSessionAndFetchProfile() {
       const { data: { session } } = await supabase.auth.getSession()

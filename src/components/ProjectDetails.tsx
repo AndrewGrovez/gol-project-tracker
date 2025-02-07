@@ -21,6 +21,7 @@ import { Select } from "./ui/select"
 import { Button } from "./ui/button"
 import EditKPIDialog from "./EditKPIDialog"
 import { createClient } from "@/utils/supabase/client"
+import ProjectComments from './ProjectComments'
 
 interface ProjectDetailsProps {
   id: string
@@ -99,7 +100,7 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
       }
     }
     fetchProfiles()
-  }, [])
+  }, [supabase])
 
   const updateTaskStatus = async (taskId: string, newStatus: Task["status"]) => {
     try {
@@ -458,6 +459,9 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
               </table>
             </div>
           )}
+        </div>
+        <div className="mb-8">
+              <ProjectComments projectId={project.id} />
         </div>
       </div>
     </div>
