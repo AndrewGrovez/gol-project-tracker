@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Trash2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
 interface Comment {
@@ -21,7 +22,19 @@ export default function ProjectComments({ projectId }: ProjectCommentsProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const supabase = createClient();
+
+  // Get current user's ID
+  useEffect(() => {
+    async function getCurrentUser() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setCurrentUserId(session.user.id);
+      }
+    }
+    getCurrentUser();
+  }, [supabase]);
 
   // Fetch comments
   useEffect(() => {
@@ -104,6 +117,23 @@ export default function ProjectComments({ projectId }: ProjectCommentsProps) {
     }
   };
 
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm("Are you sure you want to delete this comment?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("comments")
+        .delete()
+        .eq("id", commentId);
+
+      if (error) throw error;
+
+      setComments(prev => prev.filter(comment => comment.id !== commentId));
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+    }
+  };
+
   if (loading) {
     return <div className="animate-pulse space-y-4">
       {[1, 2, 3].map(n => (
@@ -151,6 +181,16 @@ export default function ProjectComments({ projectId }: ProjectCommentsProps) {
                       {new Date(comment.created_at).toLocaleString()}
                     </span>
                   </div>
+                  {currentUserId === comment.user_id && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                      onClick={() => handleDeleteComment(comment.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
                 </div>
                 <p className="text-gray-700 whitespace-pre-wrap">{comment.content}</p>
               </CardContent>
