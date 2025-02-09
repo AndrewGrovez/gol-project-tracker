@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import type { Project, Task, KPI } from "@/types/database.types";
 import {
   Activity,
@@ -9,7 +8,6 @@ import {
   Clock,
   AlertTriangle,
   Trash2,
-  Home,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
@@ -27,7 +25,6 @@ interface ProjectDetailsProps {
 }
 
 export default function ProjectDetails({ id }: ProjectDetailsProps) {
-  const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [kpis, setKpis] = useState<KPI[]>([]);
