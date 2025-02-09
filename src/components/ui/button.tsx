@@ -4,7 +4,7 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = {
-  default: "bg-blue-600 text-white hover:bg-blue-700",
+  default: "bg-[#81bb26] text-white hover:bg-[#74a822]",
   outline: "border-2 border-gray-300 text-gray-700 bg-white hover:bg-gray-50",
   ghost: "text-gray-700 hover:bg-gray-100",
 }
