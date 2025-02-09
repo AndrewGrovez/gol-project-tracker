@@ -10,6 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
+import * as DialogPrimitive from "@radix-ui/react-dialog" // Import Radix primitives for Portal & Overlay
 import { Input } from "@/components/ui/input"
 import type { Project } from "@/types/database.types"
 import { Plus } from "lucide-react"
@@ -20,7 +21,7 @@ interface NewProjectDialogProps {
 }
 
 export default function NewProjectDialog({ onProjectCreated }: NewProjectDialogProps) {
-  const supabase = createClient();
+  const supabase = createClient()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
@@ -71,48 +72,54 @@ export default function NewProjectDialog({ onProjectCreated }: NewProjectDialogP
           Add Project
         </Button>
       </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create New Project</DialogTitle>
-          <DialogDescription>
-            Enter a name and description for your new project.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          <div className="space-y-2">
-            <label htmlFor="project-name" className="text-sm font-medium">
-              Project Name
-            </label>
-            <Input
-              id="project-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Project Name"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <label htmlFor="project-description" className="text-sm font-medium">
-              Project Description
-            </label>
-            <Input
-              id="project-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Project Description"
-            />
-          </div>
-          {error && <p className="text-red-600 text-sm">{error}</p>}
-          <div className="flex justify-end mt-4 space-x-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create Project"}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
+      {/* Render the dialog content via Radix's Portal */}
+      <DialogPrimitive.Portal>
+        {/* Overlay covers the entire viewport with a blurred, semi-transparent background */}
+        <DialogPrimitive.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+        {/* DialogContent is centred on the screen */}
+        <DialogContent className="fixed top-1/2 left-1/2 w-full max-w-md bg-white p-6 rounded-lg shadow-lg transform -translate-x-1/2 -translate-y-1/2">
+          <DialogHeader>
+            <DialogTitle>Create New Project</DialogTitle>
+            <DialogDescription>
+              Enter a name and description for your new project.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <label htmlFor="project-name" className="text-sm font-medium">
+                Project Name
+              </label>
+              <Input
+                id="project-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Project Name"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="project-description" className="text-sm font-medium">
+                Project Description
+              </label>
+              <Input
+                id="project-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Project Description"
+              />
+            </div>
+            {error && <p className="text-red-600 text-sm">{error}</p>}
+            <div className="flex justify-end mt-4 space-x-2">
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Creating..." : "Create Project"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </DialogPrimitive.Portal>
     </Dialog>
   )
 }

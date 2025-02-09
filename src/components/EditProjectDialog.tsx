@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import * as DialogPrimitive from "@radix-ui/react-dialog" // Import Radix primitives for Portal & Overlay
 import { Input } from "@/components/ui/input"
 import type { Project } from "@/types/database.types"
 import { Pencil } from "lucide-react"
@@ -20,14 +21,13 @@ interface EditProjectDialogProps {
 }
 
 export default function EditProjectDialog({ project, onProjectUpdated }: EditProjectDialogProps) {
-  const supabase = createClient();
-
+  const supabase = createClient()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState(project.name)
   const [description, setDescription] = useState(project.description || "")
   const [isLoading, setIsLoading] = useState(false)
 
-  // When the dialog opens, initialize the fields with the current project data
+  // Initialise the fields when the dialog opens
   useEffect(() => {
     if (open) {
       setName(project.name)
@@ -64,44 +64,50 @@ export default function EditProjectDialog({ project, onProjectUpdated }: EditPro
           <Pencil className="w-4 h-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Edit Project</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          <div className="space-y-2">
-            <label htmlFor="project-name-edit" className="text-sm font-medium">
-              Project Name
-            </label>
-            <Input
-              id="project-name-edit"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Project Name"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <label htmlFor="project-description-edit" className="text-sm font-medium">
-              Project Description
-            </label>
-            <Input
-              id="project-description-edit"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Project Description"
-            />
-          </div>
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
+      {/* Render the dialog via Radix's Portal */}
+      <DialogPrimitive.Portal>
+        {/* Overlay covers the entire viewport with a semi-transparent, blurred background */}
+        <DialogPrimitive.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+        {/* DialogContent is centred on the screen */}
+        <DialogContent className="fixed top-1/2 left-1/2 w-full max-w-md bg-white p-6 rounded-lg shadow-lg transform -translate-x-1/2 -translate-y-1/2">
+          <DialogHeader>
+            <DialogTitle>Edit Project</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <label htmlFor="project-name-edit" className="text-sm font-medium">
+                Project Name
+              </label>
+              <Input
+                id="project-name-edit"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Project Name"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="project-description-edit" className="text-sm font-medium">
+                Project Description
+              </label>
+              <Input
+                id="project-description-edit"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Project Description"
+              />
+            </div>
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </DialogPrimitive.Portal>
     </Dialog>
   )
 }

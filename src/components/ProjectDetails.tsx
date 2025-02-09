@@ -12,7 +12,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import NewTaskDialog from "./NewTaskDialog";
-// import EditTaskDialog from "./EditTaskDialog"; // Kept for potential future use
+import EditTaskDialog from "./EditTaskDialog"; // Kept for potential future use
 import NewKPIDialog from "./NewKPIDialog";
 import { Select } from "./ui/select";
 import { Button } from "./ui/button";
@@ -285,7 +285,7 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                         </td>
                         <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end items-center gap-2">
-                            {/*
+                            {
                             <EditTaskDialog
                               task={task}
                               onTaskUpdated={(updatedTask: Task) =>
@@ -296,7 +296,7 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                                 )
                               }
                             />
-                            */}
+                            }
                             <Button
                               variant="outline"
                               size="sm"
@@ -385,7 +385,7 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                         </td>
                         <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end items-center gap-2">
-                            {/*
+                            
                             <EditTaskDialog
                               task={task}
                               onTaskUpdated={(updatedTask: Task) =>
@@ -396,7 +396,7 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                                 )
                               }
                             />
-                            */}
+                          
                             <Button
                               variant="outline"
                               size="sm"
