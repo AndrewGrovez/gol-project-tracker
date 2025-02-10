@@ -18,7 +18,6 @@ export default async function YearByYearPage() {
   const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID;
   
   // Specify the ranges for each tab.
-  // Adjust the tab names and ranges according to your sheet.
   const ranges = [
     "Pitch Occupancy!A1:J53",
     "Activities!A1:J15",
@@ -35,7 +34,10 @@ export default async function YearByYearPage() {
       spreadsheetId,
       ranges,
     });
-    sheetData = res.data.valueRanges || [];
+    sheetData = (res.data.valueRanges || []).map((vr) => ({
+      range: vr.range || "",
+      values: (vr.values || []) as (string | number)[][],
+    }));
     console.log("Sheet data fetched:", sheetData);
   } catch (error) {
     console.error("Error fetching sheet data:", error);
