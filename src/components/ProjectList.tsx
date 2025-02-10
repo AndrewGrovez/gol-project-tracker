@@ -15,26 +15,25 @@ export default function ProjectList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
-
   // State to control collapsible sections
   const [activeOpen, setActiveOpen] = useState(true)
   const [completedOpen, setCompletedOpen] = useState(true)
   const supabase = createClient()
   const [displayName, setDisplayName] = useState<string>()
 
-  useEffect(()=>{
-    const getUser = async ()=>{
-    const { data: { session } } = await supabase.auth.getSession()
-    if(!session) return;
-    supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("id", session.user.id)
-          .single()
-          .then(res=>setDisplayName(res.data?.display_name));
-  }
-  getUser()
-  },[supabase])
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("id", session.user.id)
+        .single()
+        .then(res => setDisplayName(res.data?.display_name))
+    }
+    getUser()
+  }, [supabase])
 
   useEffect(() => {
     async function checkSessionAndFetchProfile() {
@@ -43,15 +42,13 @@ export default function ProjectList() {
       if (!session) {
         router.push("/login")
       } else {
-        const {  error: profileError } = await supabase
+        const { error: profileError } = await supabase
           .from("profiles")
           .select("display_name")
           .eq("id", session.user.id)
           .single()
         if (profileError) {
           console.error("Error fetching profile:", profileError)
-        } else {
-          // You could store the profile if needed
         }
       }
     }
@@ -80,8 +77,6 @@ export default function ProjectList() {
     fetchProjects()
   }, [supabase])
 
-
-
   const toggleProjectCompletion = async (projectId: string, currentStatus: boolean) => {
     try {
       const { error } = await supabase
@@ -89,7 +84,7 @@ export default function ProjectList() {
         .update({ completed: !currentStatus })
         .eq("id", projectId)
       if (error) throw error
-      setProjects((currentProjects) =>
+      setProjects(currentProjects =>
         currentProjects.map((project) =>
           project.id === projectId
             ? { ...project, completed: !currentStatus }
@@ -109,7 +104,7 @@ export default function ProjectList() {
         .delete()
         .eq("id", projectId)
       if (error) throw error
-      setProjects((currentProjects) =>
+      setProjects(currentProjects =>
         currentProjects.filter((project) => project.id !== projectId)
       )
     } catch (error) {
@@ -145,9 +140,9 @@ export default function ProjectList() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
-      {/* Greeting section (generic greeting now that authentication is removed) */}
+      {/* Greeting section */}
       <div className="mb-4 text-xl font-medium text-center">
-        Good Ebening, {displayName} 
+        Good Ebening, {displayName}
       </div>
 
       {/* Header with NewProjectDialog */}
@@ -160,8 +155,11 @@ export default function ProjectList() {
         />
       </div>
 
-      {/* Active Projects */}
-      <div className="mb-12">
+      {/* Separator above Active Projects */}
+      <hr className="mb-8 border-gray-200" />
+
+      {/* Active Projects Section */}
+      <section className="mb-8">
         <div
           className="flex items-center justify-between mb-6 cursor-pointer"
           onClick={() => setActiveOpen(!activeOpen)}
@@ -222,11 +220,14 @@ export default function ProjectList() {
             ))}
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Completed Projects */}
+      {/* Separator above Completed Projects */}
+      <hr className="mb-8 border-gray-200" />
+
+      {/* Completed Projects Section */}
       {completedProjects.length > 0 && (
-        <div>
+        <section>
           <div
             className="flex items-center justify-between mb-6 cursor-pointer"
             onClick={() => setCompletedOpen(!completedOpen)}
@@ -287,7 +288,7 @@ export default function ProjectList() {
               ))}
             </div>
           )}
-        </div>
+        </section>
       )}
     </div>
   )

@@ -12,7 +12,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import NewTaskDialog from "./NewTaskDialog";
-import EditTaskDialog from "./EditTaskDialog"; // Kept for potential future use
+import EditTaskDialog from "./EditTaskDialog";
 import NewKPIDialog from "./NewKPIDialog";
 import { Select } from "./ui/select";
 import { Button } from "./ui/button";
@@ -196,19 +196,20 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
 
   return (
     <div>
-
       <div className="p-6 max-w-5xl mx-auto">
         {/* Project Header */}
-        <div className="mb-8">
+        <section className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             {getStatusIcon(project.status)}
             <h1 className="text-2xl font-bold">{project.name}</h1>
           </div>
           <p className="text-gray-600">{project.description}</p>
-        </div>
+        </section>
+
+        <hr className="mb-8 border-gray-300" />
 
         {/* To do tasks section */}
-        <div className="mb-8">
+        <section className="mb-8">
           <div className="flex justify-between items-center mb-4">
             <div
               className="flex items-center gap-2 cursor-pointer"
@@ -249,7 +250,8 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                   <tbody className="divide-y divide-[#1c3145]/40 bg-white">
                     {todoTasks.map(task => (
                       <tr key={task.id} className="hover:bg-[#81bb26]/10">
-                        <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {/* Allow text wrapping */}
+                        <td className="px-6 py-3 text-sm text-gray-900 whitespace-normal break-words">
                           {task.title}
                         </td>
                         <td className="px-6 py-3 whitespace-nowrap text-sm">
@@ -285,7 +287,6 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                         </td>
                         <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end items-center gap-2">
-                            {
                             <EditTaskDialog
                               task={task}
                               onTaskUpdated={(updatedTask: Task) =>
@@ -296,7 +297,6 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                                 )
                               }
                             />
-                            }
                             <Button
                               variant="outline"
                               size="sm"
@@ -314,10 +314,12 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
               </div>
             )
           )}
-        </div>
+        </section>
+
+        <hr className="mb-8 border-gray-300" />
 
         {/* Completed tasks section */}
-        <div className="mb-8">
+        <section className="mb-8">
           <div
             className="flex items-center gap-2 cursor-pointer mb-4"
             onClick={() => setCompletedOpen(!completedOpen)}
@@ -349,7 +351,8 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                   <tbody className="divide-y divide-[#1c3145]/40 bg-white">
                     {completedTasks.map(task => (
                       <tr key={task.id} className="hover:bg-[#81bb26]/10">
-                        <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {/* Allow text wrapping */}
+                        <td className="px-6 py-3 text-sm text-gray-900 whitespace-normal break-words">
                           {task.title}
                         </td>
                         <td className="px-6 py-3 whitespace-nowrap text-sm">
@@ -385,7 +388,6 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                         </td>
                         <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end items-center gap-2">
-                            
                             <EditTaskDialog
                               task={task}
                               onTaskUpdated={(updatedTask: Task) =>
@@ -396,7 +398,6 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                                 )
                               }
                             />
-                          
                             <Button
                               variant="outline"
                               size="sm"
@@ -414,10 +415,12 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
               </div>
             )
           )}
-        </div>
+        </section>
+
+        <hr className="mb-8 border-gray-300" />
 
         {/* KPIs section */}
-        <div className="mb-8">
+        <section className="mb-8">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">KPIs</h2>
             <NewKPIDialog
@@ -476,11 +479,14 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
               </table>
             </div>
           )}
-        </div>
+        </section>
 
-        <div className="mb-8">
+        <hr className="mb-8 border-gray-300" />
+
+        {/* Comments section */}
+        <section className="mb-8">
           <ProjectComments projectId={project.id} />
-        </div>
+        </section>
       </div>
     </div>
   );

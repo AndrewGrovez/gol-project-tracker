@@ -31,7 +31,10 @@ export default function MyTasks() {
         setError(null);
 
         // Get the current user's ID
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
         if (userError) throw userError;
 
         if (!user) {
@@ -42,14 +45,16 @@ export default function MyTasks() {
         // Fetch tasks assigned to the user, including project details
         const { data: taskData, error: taskError } = await supabase
           .from("tasks")
-          .select(`
+          .select(
+            `
             *,
             project:project_id (
               id,
               name,
               status
             )
-          `)
+          `
+          )
           .eq("assigned_to", user.id)
           .order("created_at", { ascending: false });
 
@@ -74,7 +79,9 @@ export default function MyTasks() {
         .eq("id", taskId);
       if (error) throw error;
       setTasks(currentTasks =>
-        currentTasks.map(task => (task.id === taskId ? { ...task, status: newStatus } : task))
+        currentTasks.map(task =>
+          task.id === taskId ? { ...task, status: newStatus } : task
+        )
       );
     } catch (error) {
       console.error("Error updating task status:", error);
@@ -86,7 +93,9 @@ export default function MyTasks() {
     try {
       const { error } = await supabase.from("tasks").delete().eq("id", taskId);
       if (error) throw error;
-      setTasks(currentTasks => currentTasks.filter(task => task.id !== taskId));
+      setTasks(currentTasks =>
+        currentTasks.filter(task => task.id !== taskId)
+      );
     } catch (error) {
       console.error("Error deleting task:", error);
     }
@@ -139,8 +148,8 @@ export default function MyTasks() {
     <div className="p-6 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold mb-8">My Tasks</h1>
 
-      {/* To do tasks section */}
-      <div className="mb-8">
+      <section className="mb-8">
+        {/* To do tasks section */}
         <div
           className="flex items-center gap-2 cursor-pointer mb-4"
           onClick={() => setTodoOpen(!todoOpen)}
@@ -152,8 +161,8 @@ export default function MyTasks() {
             <ChevronRight className="w-6 h-6" />
           )}
         </div>
-        {todoOpen && (
-          todoTasks.length === 0 ? (
+        {todoOpen &&
+          (todoTasks.length === 0 ? (
             <p className="text-gray-500">No tasks assigned to you</p>
           ) : (
             <div className="border border-[#1c3145]/40 rounded-lg overflow-hidden shadow">
@@ -170,7 +179,7 @@ export default function MyTasks() {
                 <tbody className="divide-y divide-[#1c3145]/40 bg-white">
                   {todoTasks.map(task => (
                     <tr key={task.id} className="hover:bg-[#81bb26]/10">
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-3 text-sm text-gray-900 whitespace-normal break-words">
                         {task.title}
                       </td>
                       <td className="px-6 py-3 whitespace-nowrap text-sm">
@@ -194,7 +203,9 @@ export default function MyTasks() {
                         </Select>
                       </td>
                       <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900">
-                        {task.due_date ? new Date(task.due_date).toLocaleDateString("en-GB") : "-"}
+                        {task.due_date
+                          ? new Date(task.due_date).toLocaleDateString("en-GB")
+                          : "-"}
                       </td>
                       <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
                         <Button
@@ -211,12 +222,13 @@ export default function MyTasks() {
                 </tbody>
               </table>
             </div>
-          )
-        )}
-      </div>
+          ))}
+      </section>
 
-      {/* Completed tasks section */}
-      <div className="mb-8">
+      <hr className="mb-8 border-gray-300" />
+
+      <section className="mb-8">
+        {/* Completed tasks section */}
         <div
           className="flex items-center gap-2 cursor-pointer mb-4"
           onClick={() => setCompletedOpen(!completedOpen)}
@@ -230,8 +242,8 @@ export default function MyTasks() {
             <ChevronRight className="w-6 h-6" />
           )}
         </div>
-        {completedOpen && (
-          completedTasks.length === 0 ? (
+        {completedOpen &&
+          (completedTasks.length === 0 ? (
             <p className="text-gray-500">No completed tasks</p>
           ) : (
             <div className="border border-[#1c3145]/40 rounded-lg overflow-hidden shadow">
@@ -248,7 +260,7 @@ export default function MyTasks() {
                 <tbody className="divide-y divide-[#1c3145]/40 bg-white">
                   {completedTasks.map(task => (
                     <tr key={task.id} className="hover:bg-[#81bb26]/10">
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-3 text-sm text-gray-900 whitespace-normal break-words">
                         {task.title}
                       </td>
                       <td className="px-6 py-3 whitespace-nowrap text-sm">
@@ -272,7 +284,9 @@ export default function MyTasks() {
                         </Select>
                       </td>
                       <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900">
-                        {task.due_date ? new Date(task.due_date).toLocaleDateString("en-GB") : "-"}
+                        {task.due_date
+                          ? new Date(task.due_date).toLocaleDateString("en-GB")
+                          : "-"}
                       </td>
                       <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
                         <Button
@@ -289,9 +303,8 @@ export default function MyTasks() {
                 </tbody>
               </table>
             </div>
-          )
-        )}
-      </div>
+          ))}
+      </section>
     </div>
   );
 }

@@ -31,7 +31,7 @@ const Sidebar = () => {
   const menuItems = [
     { icon: Home, label: "Projects", path: "/" },
     { icon: CheckSquare, label: "My Tasks", path: "/tasks" },
-    { icon: CalendarRange, label: "Year-By-Year", path: "/yearly" },
+    { icon: CalendarRange, label: "Year-By-Year", path: "/yearbyyear" },
     { icon: Wallet, label: "Weekly Income", path: "/income" },
   ];
 
