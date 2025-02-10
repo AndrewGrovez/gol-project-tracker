@@ -1,26 +1,21 @@
 // src/app/yearbyyear/page.tsx
-
-// src/app/yearbyyear/page.tsx
 import { google } from "googleapis";
 import React from "react";
 
-// Because pages in the app directory are server components by default,
-// we can use async/await directly here.
 export default async function YearByYearPage() {
-  // Initialise Google Auth with your service account credentials.
+  // Initialize Google Auth using your service account credentials from environment variables.
   const auth = new google.auth.GoogleAuth({
     credentials: {
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      // Replace escaped newline characters with actual newlines
+      // Replace escaped newlines with actual newline characters
       private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n") || "",
     },
     scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
   });
 
-  // Create a client for the Sheets API.
   const sheets = google.sheets({ version: "v4", auth });
   const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID;
-  const range = "Sheet1!A1:E20"; // Adjust the sheet name/range as needed
+  const range = process.env.GOOGLE_SHEET_RANGE || "Sheet1!A1:E20"; // Adjust as needed
 
   let sheetData: (string | number)[][] = [];
   try {
