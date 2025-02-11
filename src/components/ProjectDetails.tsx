@@ -35,7 +35,7 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
 
   // Collapsible states for tasks sections
   const [todoOpen, setTodoOpen] = useState(true);
-  const [completedOpen, setCompletedOpen] = useState(true);
+  const [completedOpen, setCompletedOpen] = useState(false);
 
   const supabase = createClient();
 

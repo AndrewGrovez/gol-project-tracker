@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
+import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { CheckCircle, Trash2, ChevronDown, ChevronRight } from "lucide-react"
 import type { Project } from "@/types/database.types"
@@ -17,27 +18,49 @@ export default function ProjectList() {
   const router = useRouter()
   // State to control collapsible sections
   const [activeOpen, setActiveOpen] = useState(true)
-  const [completedOpen, setCompletedOpen] = useState(true)
+  const [completedOpen, setCompletedOpen] = useState(false) // Completed projects collapsed by default
   const supabase = createClient()
   const [displayName, setDisplayName] = useState<string>()
 
+  // Helper function to get greeting based on current UK time
+  const getGreeting = (): string => {
+    const now = new Date()
+    // Convert current time to UK time using the 'en-GB' locale and the 'Europe/London' time zone
+    const ukTime = new Date(
+      now.toLocaleString("en-GB", { timeZone: "Europe/London" })
+    )
+    const hour = ukTime.getHours()
+
+    if (hour < 12) {
+      return "Bore Da"
+    } else if (hour < 17) {
+      return "Prynhawn Da"
+    } else {
+      return "Good Ebening"
+    }
+  }
+
   useEffect(() => {
     const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
       if (!session) return
       supabase
         .from("profiles")
         .select("display_name")
         .eq("id", session.user.id)
         .single()
-        .then(res => setDisplayName(res.data?.display_name))
+        .then((res) => setDisplayName(res.data?.display_name))
     }
     getUser()
   }, [supabase])
 
   useEffect(() => {
     async function checkSessionAndFetchProfile() {
-      const { data: { session } } = await supabase.auth.getSession()
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
       console.log(session)
       if (!session) {
         router.push("/login")
@@ -84,7 +107,7 @@ export default function ProjectList() {
         .update({ completed: !currentStatus })
         .eq("id", projectId)
       if (error) throw error
-      setProjects(currentProjects =>
+      setProjects((currentProjects) =>
         currentProjects.map((project) =>
           project.id === projectId
             ? { ...project, completed: !currentStatus }
@@ -104,7 +127,7 @@ export default function ProjectList() {
         .delete()
         .eq("id", projectId)
       if (error) throw error
-      setProjects(currentProjects =>
+      setProjects((currentProjects) =>
         currentProjects.filter((project) => project.id !== projectId)
       )
     } catch (error) {
@@ -140,10 +163,26 @@ export default function ProjectList() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
-      {/* Greeting section */}
-      <div className="mb-4 text-xl font-medium text-center">
-        Good Ebening, {displayName}
+      {/* Flashy, dynamic greeting section */}
+      <div
+        className="mb-4 text-3xl font-extrabold text-center bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-transparent bg-clip-text transition-transform duration-300 ease-in-out hover:scale-105"
+      >
+        {getGreeting()}, {displayName}
       </div>
+
+      {displayName && ["Andrew", "Jake", "Steve", "Aaron"].includes(displayName) && (
+      <div className="my-4 flex justify-center">
+      <Image
+      src="/motivational/dodgeball.jpg"
+      alt="Motivational Dodgeball"
+      width={175}
+      height={80}
+      className="rounded-md shadow-lg"
+      />
+  </div>
+)}
+
+
 
       {/* Header with NewProjectDialog */}
       <div className="flex justify-between items-center mb-8">
