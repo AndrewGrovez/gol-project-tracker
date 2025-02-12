@@ -1,142 +1,125 @@
-"use client"
+"use client";
 
-import React, { useEffect, useState } from "react"
-import Image from "next/image"
-import { Card, CardContent } from "@/components/ui/card"
-import { CheckCircle, Trash2, ChevronDown, ChevronRight } from "lucide-react"
-import type { Project } from "@/types/database.types"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import NewProjectDialog from "@/components/NewProjectDialog"
-import EditProjectDialog from "@/components/EditProjectDialog"
-import { createClient } from "@/utils/supabase/client"
+import React, { useEffect, useState } from "react";
+import Image from "next/image";
+import { Card, CardContent } from "@/components/ui/card";
+import { CheckCircle, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import type { Project } from "@/types/database.types";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import NewProjectDialog from "@/components/NewProjectDialog";
+import EditProjectDialog from "@/components/EditProjectDialog";
+import { createClient } from "@/utils/supabase/client";
 
 export default function ProjectList() {
-  const [projects, setProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
-  // State to control collapsible sections
-  const [activeOpen, setActiveOpen] = useState(true)
-  const [completedOpen, setCompletedOpen] = useState(false) // Completed projects collapsed by default
-  const supabase = createClient()
-  const [displayName, setDisplayName] = useState<string>()
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const [activeOpen, setActiveOpen] = useState(true);
+  const [completedOpen, setCompletedOpen] = useState(false);
+  const supabase = createClient();
+  const [displayName, setDisplayName] = useState<string>("");
+  const [currentUserId, setCurrentUserId] = useState<string>("");
 
-  // Helper function to get greeting based on current UK time
+  // Helper function for greeting based on current UK time
   const getGreeting = (): string => {
-    const now = new Date()
-    // Convert current time to UK time using the 'en-GB' locale and the 'Europe/London' time zone
+    const now = new Date();
     const ukTime = new Date(
       now.toLocaleString("en-GB", { timeZone: "Europe/London" })
-    )
-    const hour = ukTime.getHours()
+    );
+    const hour = ukTime.getHours();
+    if (hour < 12) return "Bore Da";
+    else if (hour < 17) return "Prynhawn Da";
+    else return "Good Ebening";
+  };
 
-    if (hour < 12) {
-      return "Bore Da"
-    } else if (hour < 17) {
-      return "Prynhawn Da"
-    } else {
-      return "Good Ebening"
-    }
-  }
-
+  // Fetch current user's details
   useEffect(() => {
     const getUser = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session) return
-      supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      setCurrentUserId(session.user.id);
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("display_name")
         .eq("id", session.user.id)
-        .single()
-        .then((res) => setDisplayName(res.data?.display_name))
-    }
-    getUser()
-  }, [supabase])
+        .single();
+      if (profileError) console.error("Error fetching profile:", profileError);
+      else setDisplayName(profileData?.display_name || "");
+    };
+    getUser();
+  }, [supabase]);
 
   useEffect(() => {
-    async function checkSessionAndFetchProfile() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      console.log(session)
-      if (!session) {
-        router.push("/login")
-      } else {
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("id", session.user.id)
-          .single()
-        if (profileError) {
-          console.error("Error fetching profile:", profileError)
-        }
-      }
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) router.push("/login");
     }
-    checkSessionAndFetchProfile()
-  }, [router, supabase])
+    checkSession();
+  }, [router, supabase]);
 
-  // Fetch projects list
+  // Fetch projects where allowed_users contains the current user ID
   useEffect(() => {
-    async function fetchProjects() {
+    const fetchProjects = async () => {
       try {
-        setLoading(true)
-        setError(null)
+        setLoading(true);
+        setError(null);
+        // Use the "contains" operator to filter projects whose allowed_users array includes currentUserId
         const { data, error } = await supabase
           .from("projects")
           .select("*")
-          .order("created_at", { ascending: false })
-        if (error) throw error
-        setProjects(data || [])
+          .contains("allowed_users", [currentUserId])
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        setProjects(data || []);
       } catch (err) {
-        console.error("Error:", err)
-        setError("Failed to load projects")
+        console.error("Error:", err);
+        setError("Failed to load projects");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
+    };
+    if (currentUserId) {
+      fetchProjects();
     }
-    fetchProjects()
-  }, [supabase])
+  }, [supabase, currentUserId]);
 
   const toggleProjectCompletion = async (projectId: string, currentStatus: boolean) => {
     try {
       const { error } = await supabase
         .from("projects")
         .update({ completed: !currentStatus })
-        .eq("id", projectId)
-      if (error) throw error
+        .eq("id", projectId);
+      if (error) throw error;
       setProjects((currentProjects) =>
         currentProjects.map((project) =>
-          project.id === projectId
-            ? { ...project, completed: !currentStatus }
-            : project
+          project.id === projectId ? { ...project, completed: !currentStatus } : project
         )
-      )
+      );
     } catch (error) {
-      console.error("Error toggling project completion:", error)
+      console.error("Error toggling project completion:", error);
     }
-  }
+  };
 
   const deleteProject = async (projectId: string) => {
-    if (!confirm("Are you sure you want to delete this project?")) return
+    if (!confirm("Are you sure you want to delete this project?")) return;
     try {
       const { error } = await supabase
         .from("projects")
         .delete()
-        .eq("id", projectId)
-      if (error) throw error
+        .eq("id", projectId);
+      if (error) throw error;
       setProjects((currentProjects) =>
         currentProjects.filter((project) => project.id !== projectId)
-      )
+      );
     } catch (error) {
-      console.error("Error deleting project:", error)
+      console.error("Error deleting project:", error);
     }
-  }
+  };
 
-  const activeProjects = projects.filter((project) => !project.completed)
-  const completedProjects = projects.filter((project) => project.completed)
+  const activeProjects = projects.filter((project) => !project.completed);
+  const completedProjects = projects.filter((project) => project.completed);
 
   if (loading) {
     return (
@@ -148,7 +131,7 @@ export default function ProjectList() {
           ))}
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -158,31 +141,28 @@ export default function ProjectList() {
           {error}
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
       {/* Flashy, dynamic greeting section */}
-      <div
-        className="mb-4 text-3xl font-extrabold text-center bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-transparent bg-clip-text transition-transform duration-300 ease-in-out hover:scale-105"
-      >
+      <div className="mb-4 text-3xl font-extrabold text-center bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-transparent bg-clip-text transition-transform duration-300 ease-in-out hover:scale-105">
         {getGreeting()}, {displayName}
       </div>
 
+      {/* Conditionally display motivational image for selected users */}
       {displayName && ["Andrew", "Jake", "Steve", "Aaron"].includes(displayName) && (
-      <div className="my-4 flex justify-center">
-      <Image
-      src="/motivational/dodgeball.jpg"
-      alt="Motivational Dodgeball"
-      width={175}
-      height={80}
-      className="rounded-md shadow-lg"
-      />
-  </div>
-)}
-
-
+        <div className="my-4 flex justify-center">
+          <Image
+            src="/motivational/dodgeball.jpg"
+            alt="Motivational Dodgeball"
+            width={175}
+            height={80}
+            className="rounded-md shadow-lg"
+          />
+        </div>
+      )}
 
       {/* Header with NewProjectDialog */}
       <div className="flex justify-between items-center mb-8">
@@ -194,23 +174,13 @@ export default function ProjectList() {
         />
       </div>
 
-      {/* Separator above Active Projects */}
       <hr className="mb-8 border-gray-200" />
 
       {/* Active Projects Section */}
       <section className="mb-8">
-        <div
-          className="flex items-center justify-between mb-6 cursor-pointer"
-          onClick={() => setActiveOpen(!activeOpen)}
-        >
-          <h2 className="text-2xl font-bold">
-            Active Projects ({activeProjects.length})
-          </h2>
-          {activeOpen ? (
-            <ChevronDown className="w-6 h-6" />
-          ) : (
-            <ChevronRight className="w-6 h-6" />
-          )}
+        <div className="flex items-center justify-between mb-6 cursor-pointer" onClick={() => setActiveOpen(!activeOpen)}>
+          <h2 className="text-2xl font-bold">Active Projects ({activeProjects.length})</h2>
+          {activeOpen ? <ChevronDown className="w-6 h-6" /> : <ChevronRight className="w-6 h-6" />}
         </div>
         {activeOpen && (
           <div className="grid gap-4">
@@ -218,10 +188,7 @@ export default function ProjectList() {
               <Card key={project.id}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <div
-                      className="flex-1 cursor-pointer"
-                      onClick={() => router.push(`/projects/${project.id}`)}
-                    >
+                    <div className="flex-1 cursor-pointer" onClick={() => router.push(`/projects/${project.id}`)}>
                       <h3 className="text-lg font-semibold">{project.name}</h3>
                       <p className="text-gray-500 text-sm">{project.description}</p>
                     </div>
@@ -261,24 +228,13 @@ export default function ProjectList() {
         )}
       </section>
 
-      {/* Separator above Completed Projects */}
       <hr className="mb-8 border-gray-200" />
 
-      {/* Completed Projects Section */}
       {completedProjects.length > 0 && (
         <section>
-          <div
-            className="flex items-center justify-between mb-6 cursor-pointer"
-            onClick={() => setCompletedOpen(!completedOpen)}
-          >
-            <h2 className="text-2xl font-bold">
-              Completed Projects ({completedProjects.length})
-            </h2>
-            {completedOpen ? (
-              <ChevronDown className="w-6 h-6" />
-            ) : (
-              <ChevronRight className="w-6 h-6" />
-            )}
+          <div className="flex items-center justify-between mb-6 cursor-pointer" onClick={() => setCompletedOpen(!completedOpen)}>
+            <h2 className="text-2xl font-bold">Completed Projects ({completedProjects.length})</h2>
+            {completedOpen ? <ChevronDown className="w-6 h-6" /> : <ChevronRight className="w-6 h-6" />}
           </div>
           {completedOpen && (
             <div className="grid gap-4">
@@ -286,10 +242,7 @@ export default function ProjectList() {
                 <Card key={project.id}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
-                      <div
-                        className="flex-1 cursor-pointer"
-                        onClick={() => router.push(`/projects/${project.id}`)}
-                      >
+                      <div className="flex-1 cursor-pointer" onClick={() => router.push(`/projects/${project.id}`)}>
                         <h3 className="text-lg font-semibold">{project.name}</h3>
                         <p className="text-gray-500 text-sm">{project.description}</p>
                       </div>
@@ -330,5 +283,5 @@ export default function ProjectList() {
         </section>
       )}
     </div>
-  )
+  );
 }
