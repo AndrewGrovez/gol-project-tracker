@@ -14,12 +14,12 @@ const Sidebar = () => {
   // If on the login page, show only the GolLogo.
   if (pathname === "/login") {
     return (
-      <div className="fixed left-0 top-0 h-full w-64 bg-[#1c3145] text-white p-4 shadow-lg flex items-center justify-center">
+      <div className="fixed left-0 top-0 h-full w-56 bg-[#1c3145] text-white p-4 shadow-lg flex items-center justify-center">
         <Image
           src="/GolLogo.png"
           alt="GOL Logo"
-          width={150}
-          height={50}
+          width={120}
+          height={38}
           className="object-contain"
           priority
         />
@@ -36,18 +36,19 @@ const Sidebar = () => {
   ];
 
   return (
-    <div className="fixed left-0 top-0 h-full w-64 bg-[#1c3145] text-white p-4 shadow-lg">
-      <div className="mb-8 flex justify-center">
+    <div className="fixed left-0 top-0 h-full w-56 bg-[#1c3145] text-white p-2 shadow-lg">
+      <div className="py-2 mb-4 flex justify-center">
         <Image
           src="/GolLogo.png"
           alt="GOL Logo"
-          width={150}
-          height={50}
+          width={120}
+          height={38}
           className="object-contain"
           priority
         />
       </div>
-      <div className="space-y-2">
+      {/* Reduced vertical spacing from space-y-2 to space-y-1 */}
+      <div className="space-y-1">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.path;
@@ -56,7 +57,7 @@ const Sidebar = () => {
               key={item.path}
               onClick={() => router.push(item.path)}
               className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
+                "w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors", // Reduced gap and padding
                 "hover:bg-[#81bb26]/20",
                 isActive ? "bg-[#81bb26]/30" : "transparent"
               )}

@@ -65,7 +65,6 @@ export default function ProjectList() {
       try {
         setLoading(true);
         setError(null);
-        // Use the "contains" operator to filter projects whose allowed_users array includes currentUserId
         const { data, error } = await supabase
           .from("projects")
           .select("*")
@@ -123,11 +122,11 @@ export default function ProjectList() {
 
   if (loading) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
-        <div className="animate-pulse">
-          <div className="h-8 w-48 bg-gray-200 rounded mb-6"></div>
+      <div className="p-8 max-w-6xl mx-auto">
+        <div className="animate-pulse space-y-6">
+          <div className="h-12 w-64 bg-gray-100 rounded-lg mb-8"></div>
           {[1, 2, 3].map((n) => (
-            <div key={n} className="mb-4 h-24 bg-gray-100 rounded"></div>
+            <div key={n} className="h-32 bg-gray-50 rounded-xl shadow-sm"></div>
           ))}
         </div>
       </div>
@@ -136,63 +135,84 @@ export default function ProjectList() {
 
   if (error) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          {error}
+      <div className="p-8 max-w-6xl mx-auto">
+        <div className="bg-red-50 border-l-4 border-red-400 p-6 rounded-lg">
+          <p className="text-red-700 font-medium">{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      {/* Flashy, dynamic greeting section */}
-      <div className="mb-4 text-3xl font-extrabold text-center bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-transparent bg-clip-text transition-transform duration-300 ease-in-out hover:scale-105">
-        {getGreeting()}, {displayName}
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+      <div className="p-6 max-w-6xl mx-auto">
+        {/* Enhanced greeting section */}
+        <div className="mb-8 text-4xl font-extrabold text-center bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-transparent bg-clip-text transition-transform duration-300 ease-in-out hover:scale-105">
+          {getGreeting()}, {displayName}
+        </div>
 
-      {/* Conditionally display motivational image for selected users */}
-      {displayName && ["Andrew", "Jake", "Steve", "Aaron"].includes(displayName) && (
-        <div className="my-4 flex justify-center">
-          <Image
-            src="/motivational/dodgeball.jpg"
-            alt="Motivational Dodgeball"
-            width={175}
-            height={80}
-            className="rounded-md shadow-lg"
+        {/* Conditionally display motivational image for selected users */}
+        {displayName && ["Andrew", "Jake", "Steve", "Aaron"].includes(displayName) && (
+          <div className="my-6 flex justify-center">
+            <Image
+              src="/motivational/dodgeball.jpg"
+              alt="Motivational Dodgeball"
+              width={150}
+              height={75}
+              className="rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300"
+            />
+          </div>
+        )}
+
+        {/* Header with NewProjectDialog */}
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-3xl font-bold text-gray-900">Projects</h2>
+          <NewProjectDialog
+            onProjectCreated={(newProject: Project) =>
+              setProjects((prevProjects) => [newProject, ...prevProjects])
+            }
           />
         </div>
-      )}
 
-      {/* Header with NewProjectDialog */}
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-2xl font-bold">Projects</h2>
-        <NewProjectDialog
-          onProjectCreated={(newProject: Project) =>
-            setProjects((prevProjects) => [newProject, ...prevProjects])
-          }
-        />
-      </div>
+        <hr className="mb-6 border-gray-200" />
 
-      <hr className="mb-8 border-gray-200" />
-
-      {/* Active Projects Section */}
-      <section className="mb-8">
-        <div className="flex items-center justify-between mb-6 cursor-pointer" onClick={() => setActiveOpen(!activeOpen)}>
-          <h2 className="text-2xl font-bold">Active Projects ({activeProjects.length})</h2>
-          {activeOpen ? <ChevronDown className="w-6 h-6" /> : <ChevronRight className="w-6 h-6" />}
-        </div>
-        {activeOpen && (
-          <div className="grid gap-4">
-            {activeProjects.map((project) => (
-              <Card key={project.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 cursor-pointer" onClick={() => router.push(`/projects/${project.id}`)}>
-                      <h3 className="text-lg font-semibold">{project.name}</h3>
-                      <p className="text-gray-500 text-sm">{project.description}</p>
+        {/* Active Projects Section */}
+        <section className="mb-6">
+          <div
+            className="flex items-center justify-between mb-6 cursor-pointer bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-all duration-300"
+            onClick={() => setActiveOpen(!activeOpen)}
+          >
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+              Active Projects
+              <span className="px-3 py-1 bg-[#1c3145]/10 text-[#1c3145] rounded-full text-sm font-medium">
+                {activeProjects.length}
+              </span>
+            </h2>
+            {activeOpen ? (
+              <ChevronDown className="w-6 h-6 text-gray-500" />
+            ) : (
+              <ChevronRight className="w-6 h-6 text-gray-500" />
+            )}
+          </div>
+          {activeOpen && (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {activeProjects.map((project) => (
+                <Card key={project.id} className="hover:shadow-lg transition-all duration-300 border-l-4 border-[#1c3145]">
+                  <CardContent className="p-6 flex flex-col h-full">
+                    {/* Project details */}
+                    <div
+                      className="cursor-pointer group"
+                      onClick={() => router.push(`/projects/${project.id}`)}
+                    >
+                      <h4 className="text-2xl font-semibold text-gray-900 group-hover:text-[#1c3145] transition-colors duration-300">
+                        {project.name}
+                      </h4>
+                      <p className="text-gray-700 mt-1">{project.description}</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    {/* Spacer to push buttons to bottom */}
+                    <div className="mt-auto" />
+                    {/* Button group at the bottom right */}
+                    <div className="flex justify-end gap-3">
                       <EditProjectDialog
                         project={project}
                         onProjectUpdated={(updatedProject: Project) =>
@@ -206,7 +226,7 @@ export default function ProjectList() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                        className="text-red-600 hover:bg-red-100 transition-colors duration-300 p-2"
                         onClick={() => deleteProject(project.id)}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -214,39 +234,56 @@ export default function ProjectList() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-green-600 hover:bg-green-50 hover:text-green-700"
+                        className="text-green-600 hover:bg-green-100 transition-colors duration-300 p-2"
                         onClick={() => toggleProjectCompletion(project.id, project.completed)}
                       >
-                        <CheckCircle className="w-5 h-5" />
+                        <CheckCircle className="w-4 h-4" />
                       </Button>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </section>
 
-      <hr className="mb-8 border-gray-200" />
+        <hr className="mb-8 border-gray-200" />
 
-      {completedProjects.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between mb-6 cursor-pointer" onClick={() => setCompletedOpen(!completedOpen)}>
-            <h2 className="text-2xl font-bold">Completed Projects ({completedProjects.length})</h2>
-            {completedOpen ? <ChevronDown className="w-6 h-6" /> : <ChevronRight className="w-6 h-6" />}
-          </div>
-          {completedOpen && (
-            <div className="grid gap-4">
-              {completedProjects.map((project) => (
-                <Card key={project.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 cursor-pointer" onClick={() => router.push(`/projects/${project.id}`)}>
-                        <h3 className="text-lg font-semibold">{project.name}</h3>
-                        <p className="text-gray-500 text-sm">{project.description}</p>
+        {/* Completed Projects Section */}
+        {completedProjects.length > 0 && (
+          <section>
+            <div
+              className="flex items-center justify-between mb-6 cursor-pointer bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-all duration-300"
+              onClick={() => setCompletedOpen(!completedOpen)}
+            >
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                Completed Projects
+                <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                  {completedProjects.length}
+                </span>
+              </h2>
+              {completedOpen ? (
+                <ChevronDown className="w-6 h-6 text-gray-500" />
+              ) : (
+                <ChevronRight className="w-6 h-6 text-gray-500" />
+              )}
+            </div>
+            {completedOpen && (
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {completedProjects.map((project) => (
+                  <Card key={project.id} className="hover:shadow-lg transition-all duration-300 border-l-4 border-green-500 bg-gray-50">
+                    <CardContent className="p-6 flex flex-col h-full">
+                      <div
+                        className="cursor-pointer group"
+                        onClick={() => router.push(`/projects/${project.id}`)}
+                      >
+                        <h4 className="text-2xl font-semibold text-gray-700 group-hover:text-green-600 transition-colors duration-300">
+                          {project.name}
+                        </h4>
+                        <p className="text-gray-600 mt-1">{project.description}</p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="mt-auto" />
+                      <div className="flex justify-end gap-3">
                         <EditProjectDialog
                           project={project}
                           onProjectUpdated={(updatedProject: Project) =>
@@ -260,7 +297,7 @@ export default function ProjectList() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                          className="text-red-600 hover:bg-red-100 transition-colors duration-300 p-2"
                           onClick={() => deleteProject(project.id)}
                         >
                           <Trash2 className="w-4 h-4" />
@@ -268,20 +305,20 @@ export default function ProjectList() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-green-600 hover:bg-green-50 hover:text-green-700"
+                          className="text-green-600 hover:bg-green-100 transition-colors duration-300 p-2"
                           onClick={() => toggleProjectCompletion(project.id, project.completed)}
                         >
-                          <CheckCircle className="w-5 h-5" />
+                          <CheckCircle className="w-4 h-4" />
                         </Button>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+      </div>
     </div>
   );
 }
