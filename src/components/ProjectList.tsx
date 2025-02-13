@@ -155,10 +155,10 @@ export default function ProjectList() {
         {displayName && ["Andrew", "Jake", "Steve", "Aaron"].includes(displayName) && (
           <div className="my-6 flex justify-center">
             <Image
-              src="/motivational/dodgeball.jpg"
+              src="/motivational/white goodman.jpg"
               alt="Motivational Dodgeball"
-              width={150}
-              height={75}
+              width={140}
+              height={71}
               className="rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300"
             />
           </div>

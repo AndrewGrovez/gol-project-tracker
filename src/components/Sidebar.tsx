@@ -4,7 +4,7 @@
 import React from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
-import { Home, CheckSquare, CalendarRange, Wallet } from "lucide-react";
+import { Home, CheckSquare, CalendarRange, Wallet, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const Sidebar = () => {
@@ -32,6 +32,7 @@ const Sidebar = () => {
     { icon: Home, label: "Projects", path: "/" },
     { icon: CheckSquare, label: "My Tasks", path: "/tasks" },
     { icon: CalendarRange, label: "Year-By-Year", path: "/yearbyyear" },
+    { icon: TrendingDown, label: "Churn Rates", path: "/churn-rates" },
     { icon: Wallet, label: "Weekly Income", path: "/income" },
   ];
 
