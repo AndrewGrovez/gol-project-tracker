@@ -32,7 +32,7 @@ const Sidebar = () => {
     { icon: Home, label: "Projects", path: "/" },
     { icon: CheckSquare, label: "My Tasks", path: "/tasks" },
     { icon: CalendarRange, label: "Year-By-Year", path: "/yearbyyear" },
-    { icon: TrendingDown, label: "Churn Rates", path: "/churn-rates" },
+    { icon: TrendingDown, label: "Churn Rates", path: "/churn" },
     { icon: Wallet, label: "Weekly Income", path: "/income" },
   ];
 
