@@ -1,10 +1,16 @@
-// src/components/Sidebar.tsx
 "use client";
 
 import React from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
-import { Home, CheckSquare, CalendarRange, Wallet, TrendingDown } from "lucide-react";
+import {
+  Home,
+  CheckSquare,
+  CalendarRange,
+  Wallet,
+  TrendingDown,
+  BarChart2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const Sidebar = () => {
@@ -34,6 +40,8 @@ const Sidebar = () => {
     { icon: CalendarRange, label: "Year-By-Year", path: "/yearbyyear" },
     { icon: TrendingDown, label: "Churn Rates", path: "/churn" },
     { icon: Wallet, label: "Weekly Income", path: "/income" },
+    // New item for Web Analytics using BarChart2 icon
+    { icon: BarChart2, label: "Web Analytics", path: "/web-analytics" },
   ];
 
   return (
@@ -48,7 +56,6 @@ const Sidebar = () => {
           priority
         />
       </div>
-      {/* Reduced vertical spacing from space-y-2 to space-y-1 */}
       <div className="space-y-1">
         {menuItems.map((item) => {
           const Icon = item.icon;
@@ -58,7 +65,7 @@ const Sidebar = () => {
               key={item.path}
               onClick={() => router.push(item.path)}
               className={cn(
-                "w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors", // Reduced gap and padding
+                "w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
                 "hover:bg-[#81bb26]/20",
                 isActive ? "bg-[#81bb26]/30" : "transparent"
               )}
