@@ -176,13 +176,13 @@ export default async function WebAnalyticsPage() {
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">
+      <h1 className="text-2xl font-bold mb-4 text-[#1c3145]">
         Web Analytics Dashboard – Last 30 Days
       </h1>
 
       {/* Top Pages Section */}
       <section className="mb-6 border p-4 rounded">
-        <h2 className="text-xl font-semibold mb-2">Top Pages</h2>
+        <h2 className="text-xl font-semibold mb-2 text-[#1c3145]">Top Pages</h2>
         <table className="w-full text-sm">
           <thead className="bg-gray-100">
             <tr>
@@ -203,7 +203,7 @@ export default async function WebAnalyticsPage() {
 
       {/* Demographics Section */}
       <section className="mb-6 border p-4 rounded">
-        <h2 className="text-xl font-semibold mb-2">Demographics</h2>
+        <h2 className="text-xl font-semibold mb-2 text-[#1c3145]">Demographics</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <div>
             <strong>By City (Top 10):</strong>
@@ -230,7 +230,7 @@ export default async function WebAnalyticsPage() {
 
       {/* Technology Section */}
       <section className="mb-6 border p-4 rounded">
-        <h2 className="text-xl font-semibold mb-2">Technology</h2>
+        <h2 className="text-xl font-semibold mb-2 text-[#1c3145]">Technology</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
           <div>
             <strong>By Platform:</strong>

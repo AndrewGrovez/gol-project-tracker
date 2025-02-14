@@ -10,6 +10,7 @@ import {
   Wallet,
   TrendingDown,
   BarChart2,
+  ChartLine,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +40,7 @@ const Sidebar = () => {
     { icon: CheckSquare, label: "My Tasks", path: "/tasks" },
     { icon: CalendarRange, label: "Year-By-Year", path: "/yearbyyear" },
     { icon: TrendingDown, label: "Churn Rates", path: "/churn" },
+    { icon: ChartLine, label: "Social Analytics", path: "/social-analytics" },
     { icon: Wallet, label: "Weekly Income", path: "/income" },
     // New item for Web Analytics using BarChart2 icon
     { icon: BarChart2, label: "Web Analytics", path: "/web-analytics" },
