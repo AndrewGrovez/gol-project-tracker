@@ -22,17 +22,19 @@ export default function ProjectList() {
   const [displayName, setDisplayName] = useState<string>("");
   const [currentUserId, setCurrentUserId] = useState<string>("");
 
-  // Helper function for greeting based on current UK time
-  const getGreeting = (): string => {
-    const now = new Date();
-    const ukTime = new Date(
-      now.toLocaleString("en-GB", { timeZone: "Europe/London" })
+  // Get the current UK hour using Intl
+  const getUKHour = (): number => {
+    return Number(
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/London",
+        hour: "numeric",
+        hour12: false,
+      }).format(new Date())
     );
-    const hour = ukTime.getHours();
-    if (hour < 12) return "Bore Da";
-    else if (hour < 17) return "Prynhawn Da";
-    else return "Good Ebening";
   };
+
+  const ukHour = getUKHour();
+  const isEvening = ukHour >= 17;
 
   // Fetch current user's details
   useEffect(() => {
@@ -146,13 +148,25 @@ export default function ProjectList() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <div className="p-6 max-w-6xl mx-auto">
-        {/* Enhanced greeting section */}
-        <div className="mb-8 text-4xl font-extrabold text-center bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-transparent bg-clip-text transition-transform duration-300 ease-in-out hover:scale-105">
-          {getGreeting()}, {displayName}
+        {/* Greeting section: if it's evening, display Good Ebening image; otherwise, show text */}
+        <div className="mb-8 text-4xl font-extrabold text-center transition-transform duration-300 ease-in-out hover:scale-105">
+          {isEvening ? (
+            <Image
+              src="/motivational/good ebening.jpg"
+              alt="Good Ebening"
+              width={300}
+              height={100}
+              className="mx-auto"
+            />
+          ) : (
+            <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-transparent bg-clip-text">
+              {ukHour < 12 ? "Bore Da" : "Prynhawn Da"}, {displayName}
+            </span>
+          )}
         </div>
 
-        {/* Conditionally display motivational image for selected users */}
-        {displayName && ["Andrew", "Jake", "Steve", "Aaron"].includes(displayName) && (
+        {/* Conditionally display white goodman image only if it's not evening */}
+        {!isEvening && displayName && ["Andrew", "Jake", "Steve", "Aaron"].includes(displayName) && (
           <div className="my-6 flex justify-center">
             <Image
               src="/motivational/white goodman.jpg"
@@ -209,9 +223,8 @@ export default function ProjectList() {
                       </h4>
                       <p className="text-gray-700 mt-1">{project.description}</p>
                     </div>
-                    {/* Spacer to push buttons to bottom */}
                     <div className="mt-auto" />
-                    {/* Button group at the bottom right */}
+                    {/* Button group */}
                     <div className="flex justify-end gap-3">
                       <EditProjectDialog
                         project={project}
