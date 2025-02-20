@@ -1,14 +1,14 @@
 export type Project = {
-  id: string
-  name: string
-  description: string | null
-  status: 'completed' | 'in_progress' | 'not_started' | 'delayed'
-  completed: boolean
-  created_at: string
-  updated_at: string
-  owner_id: string | null
-}
-  
+  id: string;
+  name: string;
+  description: string | null;
+  status: 'completed' | 'in_progress' | 'not_started' | 'delayed';
+  completed: boolean;
+  created_at: string;
+  updated_at: string;
+  owner_id: string | null;
+};
+
 export type Task = {
   id: string;
   project_id: string;
@@ -19,23 +19,24 @@ export type Task = {
   created_at: string;
   updated_at: string;
   assigned_to?: string | null;
-  recurrence: 'none' | 'daily' | 'weekly' | 'monthly'; // New field for recurring tasks
+  recurrence: 'none' | 'daily' | 'weekly' | 'monthly';
+  recurrence_days: string[]; // For weekly recurring tasks, stores days like ['Mon','Wed']
 };
-  
-  export type Comment = {
-    id: string
-    project_id: string
-    user_id: string
-    content: string
-    created_at: string
-  }
 
-  export type KPI = {
-    id: string
-    project_id: string
-    title: string
-    measure_date: string
-    result: string
-    created_at: string
-    updated_at: string
-  }
+export type Comment = {
+  id: string;
+  project_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+};
+
+export type KPI = {
+  id: string;
+  project_id: string;
+  title: string;
+  measure_date: string;
+  result: string;
+  created_at: string;
+  updated_at: string;
+};
