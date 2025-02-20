@@ -41,8 +41,14 @@ function formatDateDisplay(dateString: string): string {
   const now = new Date();
   // Set both to midnight for accurate day difference
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const target = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
-  const diffDays = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const target = new Date(
+    targetDate.getFullYear(),
+    targetDate.getMonth(),
+    targetDate.getDate()
+  );
+  const diffDays = Math.round(
+    (target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
 
   if (diffDays === 0) return "Today";
   if (diffDays === 1) return "Tomorrow";
@@ -191,6 +197,21 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
         return <AlertTriangle className={`${iconClass} text-red-500`} />;
       default:
         return <Clock className={`${iconClass} text-gray-500`} />;
+    }
+  };
+
+  const getTaskStatusIcon = (status: Task["status"]) => {
+    switch (status) {
+      case "completed":
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case "in_progress":
+        return <Activity className="w-4 h-4 text-blue-500" />;
+      case "todo":
+        return <Clock className="w-4 h-4 text-gray-500" />;
+      case "blocked":
+        return <AlertTriangle className="w-4 h-4 text-red-500" />;
+      default:
+        return null;
     }
   };
 
@@ -346,9 +367,16 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
         {/* To do tasks section */}
         <section className="mb-8">
           <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setTodoOpen(!todoOpen)}>
+            <div
+              className="flex items-center gap-2 cursor-pointer"
+              onClick={() => setTodoOpen(!todoOpen)}
+            >
               <h2 className="text-xl font-semibold">To do ({todoTasks.length})</h2>
-              {todoOpen ? <ChevronDown className="w-6 h-6" /> : <ChevronRight className="w-6 h-6" />}
+              {todoOpen ? (
+                <ChevronDown className="w-6 h-6" />
+              ) : (
+                <ChevronRight className="w-6 h-6" />
+              )}
             </div>
             <div onClick={(e) => e.stopPropagation()}>
               <NewTaskDialog
@@ -357,8 +385,8 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
               />
             </div>
           </div>
-          {todoOpen && (
-            todoTasks.length === 0 ? (
+          {todoOpen &&
+            (todoTasks.length === 0 ? (
               <p className="text-gray-500">No tasks yet</p>
             ) : (
               <div className="border border-[#1c3145]/40 rounded-lg overflow-hidden shadow">
@@ -395,8 +423,11 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                   <tbody className="divide-y divide-[#1c3145]/40 bg-white">
                     {todoTasks.map((task) => (
                       <tr key={task.id} className="hover:bg-[#81bb26]/10">
-                        <td className="px-6 py-3 text-sm text-gray-900 whitespace-normal break-words">{task.title}</td>
-                        <td className="px-6 py-3 whitespace-nowrap text-sm">
+                        <td className="px-6 py-3 text-sm text-gray-900 whitespace-normal break-words">
+                          {task.title}
+                        </td>
+                        <td className="px-6 py-3 whitespace-nowrap text-sm flex items-center gap-2">
+                          {getTaskStatusIcon(task.status)}
                           <Select
                             value={task.status}
                             className="min-w-[100px] text-xs"
@@ -454,20 +485,28 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                   </tbody>
                 </table>
               </div>
-            )
-          )}
+            ))}
         </section>
 
         <hr className="mb-8 border-gray-300" />
 
         {/* Completed tasks section */}
         <section className="mb-8">
-          <div className="flex items-center gap-2 cursor-pointer mb-4" onClick={() => setCompletedOpen(!completedOpen)}>
-            <h2 className="text-xl font-semibold">Completed tasks ({completedTasks.length})</h2>
-            {completedOpen ? <ChevronDown className="w-6 h-6" /> : <ChevronRight className="w-6 h-6" />}
+          <div
+            className="flex items-center gap-2 cursor-pointer mb-4"
+            onClick={() => setCompletedOpen(!completedOpen)}
+          >
+            <h2 className="text-xl font-semibold">
+              Completed tasks ({completedTasks.length})
+            </h2>
+            {completedOpen ? (
+              <ChevronDown className="w-6 h-6" />
+            ) : (
+              <ChevronRight className="w-6 h-6" />
+            )}
           </div>
-          {completedOpen && (
-            completedTasks.length === 0 ? (
+          {completedOpen &&
+            (completedTasks.length === 0 ? (
               <p className="text-gray-500">No completed tasks yet</p>
             ) : (
               <div className="border border-[#1c3145]/40 rounded-lg overflow-hidden shadow">
@@ -504,8 +543,11 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                   <tbody className="divide-y divide-[#1c3145]/40 bg-white">
                     {completedTasks.map((task) => (
                       <tr key={task.id} className="hover:bg-[#81bb26]/10">
-                        <td className="px-6 py-3 text-sm text-gray-900 whitespace-normal break-words">{task.title}</td>
-                        <td className="px-6 py-3 whitespace-nowrap text-sm">
+                        <td className="px-6 py-3 text-sm text-gray-900 whitespace-normal break-words">
+                          {task.title}
+                        </td>
+                        <td className="px-6 py-3 whitespace-nowrap text-sm flex items-center gap-2">
+                          {getTaskStatusIcon(task.status)}
                           <Select
                             value={task.status}
                             className="min-w-[100px] text-xs"
@@ -563,8 +605,7 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                   </tbody>
                 </table>
               </div>
-            )
-          )}
+            ))}
         </section>
 
         <hr className="mb-8 border-gray-300" />

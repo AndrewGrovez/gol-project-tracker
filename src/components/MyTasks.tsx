@@ -78,8 +78,8 @@ export default function MyTasks() {
         .update({ status: newStatus })
         .eq("id", taskId);
       if (error) throw error;
-      setTasks(currentTasks =>
-        currentTasks.map(task =>
+      setTasks((currentTasks) =>
+        currentTasks.map((task) =>
           task.id === taskId ? { ...task, status: newStatus } : task
         )
       );
@@ -93,8 +93,8 @@ export default function MyTasks() {
     try {
       const { error } = await supabase.from("tasks").delete().eq("id", taskId);
       if (error) throw error;
-      setTasks(currentTasks =>
-        currentTasks.filter(task => task.id !== taskId)
+      setTasks((currentTasks) =>
+        currentTasks.filter((task) => task.id !== taskId)
       );
     } catch (error) {
       console.error("Error deleting task:", error);
@@ -117,12 +117,27 @@ export default function MyTasks() {
     }
   };
 
+  const getTaskStatusIcon = (status: Task["status"]) => {
+    switch (status) {
+      case "completed":
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case "in_progress":
+        return <Activity className="w-4 h-4 text-blue-500" />;
+      case "todo":
+        return <Clock className="w-4 h-4 text-gray-500" />;
+      case "blocked":
+        return <AlertTriangle className="w-4 h-4 text-red-500" />;
+      default:
+        return null;
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 max-w-5xl mx-auto">
         <div className="animate-pulse">
           <div className="h-8 w-64 bg-gray-200 rounded mb-6"></div>
-          {[1, 2, 3].map(n => (
+          {[1, 2, 3].map((n) => (
             <div key={n} className="mb-4 h-24 bg-gray-100 rounded"></div>
           ))}
         </div>
@@ -141,8 +156,8 @@ export default function MyTasks() {
   }
 
   // Split tasks into "To do" and "Completed tasks"
-  const todoTasks = tasks.filter(task => task.status !== "completed");
-  const completedTasks = tasks.filter(task => task.status === "completed");
+  const todoTasks = tasks.filter((task) => task.status !== "completed");
+  const completedTasks = tasks.filter((task) => task.status === "completed");
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -177,7 +192,7 @@ export default function MyTasks() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#1c3145]/40 bg-white">
-                  {todoTasks.map(task => (
+                  {todoTasks.map((task) => (
                     <tr key={task.id} className="hover:bg-[#81bb26]/10">
                       <td className="px-6 py-3 text-sm text-gray-900 whitespace-normal break-words">
                         {task.title}
@@ -188,7 +203,8 @@ export default function MyTasks() {
                           <span>{task.project.name}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm">
+                      <td className="px-6 py-3 whitespace-nowrap text-sm flex items-center gap-2">
+                        {getTaskStatusIcon(task.status)}
                         <Select
                           value={task.status}
                           className="min-w-[100px] text-xs"
@@ -258,7 +274,7 @@ export default function MyTasks() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#1c3145]/40 bg-white">
-                  {completedTasks.map(task => (
+                  {completedTasks.map((task) => (
                     <tr key={task.id} className="hover:bg-[#81bb26]/10">
                       <td className="px-6 py-3 text-sm text-gray-900 whitespace-normal break-words">
                         {task.title}
@@ -269,7 +285,8 @@ export default function MyTasks() {
                           <span>{task.project.name}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm">
+                      <td className="px-6 py-3 whitespace-nowrap text-sm flex items-center gap-2">
+                        {getTaskStatusIcon(task.status)}
                         <Select
                           value={task.status}
                           className="min-w-[100px] text-xs"
