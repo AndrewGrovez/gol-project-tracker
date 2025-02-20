@@ -1,74 +1,77 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import * as DialogPrimitive from "@radix-ui/react-dialog" // Import Radix primitives for Portal & Overlay
-import { Input } from "@/components/ui/input"
-import type { Task } from "@/types/database.types"
-import { DatePicker, TimePicker } from "rsuite"
-import { Pencil } from "lucide-react"
-import { Select } from "@/components/ui/select"
-import { createClient } from "@/utils/supabase/client"
+} from "@/components/ui/dialog";
+import * as DialogPrimitive from "@radix-ui/react-dialog"; // Import Radix primitives for Portal & Overlay
+import { Input } from "@/components/ui/input";
+import type { Task } from "@/types/database.types";
+import { DatePicker, TimePicker } from "rsuite";
+import { Pencil } from "lucide-react";
+import { Select } from "@/components/ui/select";
+import { createClient } from "@/utils/supabase/client";
 
 interface EditTaskDialogProps {
-  task: Task
-  onTaskUpdated: (updatedTask: Task) => void
+  task: Task;
+  onTaskUpdated: (updatedTask: Task) => void;
 }
 
 export default function EditTaskDialog({ task, onTaskUpdated }: EditTaskDialogProps) {
-  const supabase = createClient()
+  const supabase = createClient();
 
-  const [open, setOpen] = useState(false)
-  const [title, setTitle] = useState(task.title)
-  const [description, setDescription] = useState(task.description || "")
-  const [dueDate, setDueDate] = useState<Date | null>(task.due_date ? new Date(task.due_date) : null)
-  const [dueTime, setDueTime] = useState<Date | null>(task.due_date ? new Date(task.due_date) : null)
-  const [assignedTo, setAssignedTo] = useState<string>(task.assigned_to || "")
-  const [isLoading, setIsLoading] = useState(false)
-  const [profiles, setProfiles] = useState<{ id: string; display_name: string }[]>([])
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState(task.title);
+  const [description, setDescription] = useState(task.description || "");
+  const [dueDate, setDueDate] = useState<Date | null>(task.due_date ? new Date(task.due_date) : null);
+  const [dueTime, setDueTime] = useState<Date | null>(task.due_date ? new Date(task.due_date) : null);
+  const [assignedTo, setAssignedTo] = useState<string>(task.assigned_to || "");
+  // New state for recurrence with default value from task (or "none")
+  const [recurrence, setRecurrence] = useState<'none' | 'daily' | 'weekly' | 'monthly'>(task.recurrence || "none");
+  const [isLoading, setIsLoading] = useState(false);
+  const [profiles, setProfiles] = useState<{ id: string; display_name: string }[]>([]);
 
   useEffect(() => {
     if (open) {
       // Reset form values when the dialog opens
-      setTitle(task.title)
-      setDescription(task.description || "")
-      setAssignedTo(task.assigned_to || "")
+      setTitle(task.title);
+      setDescription(task.description || "");
+      setAssignedTo(task.assigned_to || "");
+      setRecurrence(task.recurrence || "none");
       if (task.due_date) {
-        const date = new Date(task.due_date)
-        setDueDate(date)
-        setDueTime(date)
+        const date = new Date(task.due_date);
+        setDueDate(date);
+        setDueTime(date);
       }
     }
-  }, [open, task])
+  }, [open, task]);
 
   // Fetch profiles for assignment dropdown
   useEffect(() => {
     async function fetchProfiles() {
-      const { data, error } = await supabase.from("profiles").select("id, display_name")
+      const { data, error } = await supabase.from("profiles").select("id, display_name");
       if (!error && data) {
-        setProfiles(data)
+        setProfiles(data);
       } else {
-        console.error("Error fetching profiles:", error)
+        console.error("Error fetching profiles:", error);
       }
     }
-    fetchProfiles()
-  }, [supabase])
+    fetchProfiles();
+  }, [supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
 
-    let combinedDueDate: Date | null = null
+    let combinedDueDate: Date | null = null;
     if (dueDate) {
-      const datePart = dueDate
-      const timePart = dueTime || new Date(0)
+      const datePart = dueDate;
+      const timePart = dueTime || new Date(0);
       combinedDueDate = new Date(
         datePart.getFullYear(),
         datePart.getMonth(),
@@ -76,7 +79,7 @@ export default function EditTaskDialog({ task, onTaskUpdated }: EditTaskDialogPr
         timePart.getHours(),
         timePart.getMinutes(),
         timePart.getSeconds()
-      )
+      );
     }
 
     try {
@@ -87,23 +90,24 @@ export default function EditTaskDialog({ task, onTaskUpdated }: EditTaskDialogPr
           description,
           due_date: combinedDueDate ? combinedDueDate.toISOString() : null,
           assigned_to: assignedTo || null,
+          recurrence, // Include the recurrence update
         })
         .eq("id", task.id)
         .select()
-        .single()
+        .single();
 
-      if (error) throw error
+      if (error) throw error;
 
       if (data) {
-        onTaskUpdated(data)
-        setOpen(false)
+        onTaskUpdated(data);
+        setOpen(false);
       }
     } catch (error) {
-      console.error("Error updating task:", error)
+      console.error("Error updating task:", error);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -166,6 +170,22 @@ export default function EditTaskDialog({ task, onTaskUpdated }: EditTaskDialogPr
                 />
               </div>
             </div>
+            {/* New Recurrence field */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium block">Recurrence</label>
+              <Select
+                value={recurrence}
+                onChange={(e) =>
+                  setRecurrence(e.target.value as 'none' | 'daily' | 'weekly' | 'monthly')
+                }
+                className="min-w-[130px] text-sm"
+              >
+                <option value="none">None</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </Select>
+            </div>
             {/* Assignment dropdown */}
             <div className="space-y-2">
               <label className="text-sm font-medium block">Assign To</label>
@@ -194,5 +214,5 @@ export default function EditTaskDialog({ task, onTaskUpdated }: EditTaskDialogPr
         </DialogContent>
       </DialogPrimitive.Portal>
     </Dialog>
-  )
+  );
 }

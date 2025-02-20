@@ -18,7 +18,8 @@ export type Task = {
   due_date: string | null;
   created_at: string;
   updated_at: string;
-  assigned_to?: string | null; // Add this line
+  assigned_to?: string | null;
+  recurrence: 'none' | 'daily' | 'weekly' | 'monthly'; // New field for recurring tasks
 };
   
   export type Comment = {

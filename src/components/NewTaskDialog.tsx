@@ -33,6 +33,8 @@ export default function NewTaskDialog({ projectId, onTaskCreated }: NewTaskDialo
   const [isLoading, setIsLoading] = useState(false);
   const [assignedTo, setAssignedTo] = useState<string>("");
   const [profiles, setProfiles] = useState<{ id: string; display_name: string }[]>([]);
+  // New state for recurrence; default is "none"
+  const [recurrence, setRecurrence] = useState<'none' | 'daily' | 'weekly' | 'monthly'>("none");
 
   // Fetch profiles from the profiles table to populate the assignment dropdown.
   useEffect(() => {
@@ -80,6 +82,7 @@ export default function NewTaskDialog({ projectId, onTaskCreated }: NewTaskDialo
             status: "todo",
             due_date: combinedDueDate ? combinedDueDate.toISOString() : null,
             assigned_to: assignedTo || null,
+            recurrence, // Include the recurrence field
           },
         ])
         .select()
@@ -94,6 +97,7 @@ export default function NewTaskDialog({ projectId, onTaskCreated }: NewTaskDialo
         setDueDate(null);
         setDueTime(null);
         setAssignedTo("");
+        setRecurrence("none");
         setOpen(false);
       }
     } catch (error) {
@@ -162,6 +166,22 @@ export default function NewTaskDialog({ projectId, onTaskCreated }: NewTaskDialo
                   format="HH:mm"
                 />
               </div>
+            </div>
+            {/* New Recurrence field */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium block">Recurrence</label>
+              <Select
+                value={recurrence}
+                onChange={(e) =>
+                  setRecurrence(e.target.value as 'none' | 'daily' | 'weekly' | 'monthly')
+                }
+                className="min-w-[130px] text-sm"
+              >
+                <option value="none">None</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </Select>
             </div>
             {/* Assignment dropdown */}
             <div className="space-y-2">
