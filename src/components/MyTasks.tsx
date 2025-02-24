@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import type { Task, Project } from "@/types/database.types";
 import {
   Activity,
@@ -15,12 +15,20 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
 
+type TaskSortColumn = "title" | "project" | "status" | "due_date";
+
 export default function MyTasks() {
   const [tasks, setTasks] = useState<(Task & { project: Project })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [todoOpen, setTodoOpen] = useState(true);
   const [completedOpen, setCompletedOpen] = useState(true);
+
+  // Sorting state for tasks
+  const [taskSortConfig, setTaskSortConfig] = useState<{
+    column: TaskSortColumn;
+    direction: "asc" | "desc";
+  }>({ column: "title", direction: "asc" });
 
   const supabase = createClient();
 
@@ -71,6 +79,7 @@ export default function MyTasks() {
     fetchMyTasks();
   }, [supabase]);
 
+  // Update task status function remains unchanged
   const updateTaskStatus = async (taskId: string, newStatus: Task["status"]) => {
     try {
       const { error } = await supabase
@@ -101,22 +110,7 @@ export default function MyTasks() {
     }
   };
 
-  const getStatusIcon = (status: Project["status"]) => {
-    const iconClass = "w-5 h-5";
-    switch (status) {
-      case "completed":
-        return <CheckCircle className={`${iconClass} text-green-500`} />;
-      case "in_progress":
-        return <Activity className={`${iconClass} text-blue-500`} />;
-      case "not_started":
-        return <Clock className={`${iconClass} text-gray-500`} />;
-      case "delayed":
-        return <AlertTriangle className={`${iconClass} text-red-500`} />;
-      default:
-        return <Clock className={`${iconClass} text-gray-500`} />;
-    }
-  };
-
+  // Helper to render status icon
   const getTaskStatusIcon = (status: Task["status"]) => {
     switch (status) {
       case "completed":
@@ -130,6 +124,58 @@ export default function MyTasks() {
       default:
         return null;
     }
+  };
+
+  // Sorting logic: sort tasks based on the current sort configuration
+  const sortedTasks = useMemo(() => {
+    const sorted = [...tasks];
+    const { column, direction } = taskSortConfig;
+    sorted.sort((a, b) => {
+      if (column === "title") {
+        return a.title.localeCompare(b.title);
+      } else if (column === "project") {
+        return a.project.name.localeCompare(b.project.name);
+      } else if (column === "status") {
+        const order: Record<Task["status"], number> = {
+          todo: 1,
+          in_progress: 2,
+          completed: 3,
+          blocked: 4,
+        };
+        return order[a.status] - order[b.status];
+      } else if (column === "due_date") {
+        const aDate = a.due_date ? new Date(a.due_date).getTime() : 0;
+        const bDate = b.due_date ? new Date(b.due_date).getTime() : 0;
+        return aDate - bDate;
+      }
+      return 0;
+    });
+    if (direction === "desc") {
+      sorted.reverse();
+    }
+    return sorted;
+  }, [tasks, taskSortConfig]);
+
+  // Filter tasks into To do and Completed sections after sorting
+  const todoTasks = sortedTasks.filter((task) => task.status !== "completed");
+  const completedTasks = sortedTasks.filter((task) => task.status === "completed");
+
+  // Function to handle sorting on header click
+  const handleTaskSort = (column: TaskSortColumn) => {
+    setTaskSortConfig((prev) => {
+      if (prev.column === column) {
+        return { column, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { column, direction: "asc" };
+    });
+  };
+
+  // Helper to render sort arrow
+  const renderSortArrow = (column: TaskSortColumn) => {
+    if (taskSortConfig.column === column) {
+      return taskSortConfig.direction === "asc" ? " ▲" : " ▼";
+    }
+    return "";
   };
 
   if (loading) {
@@ -155,16 +201,12 @@ export default function MyTasks() {
     );
   }
 
-  // Split tasks into "To do" and "Completed tasks"
-  const todoTasks = tasks.filter((task) => task.status !== "completed");
-  const completedTasks = tasks.filter((task) => task.status === "completed");
-
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold mb-8">My Tasks</h1>
 
+      {/* To do tasks section */}
       <section className="mb-8">
-        {/* To do tasks section */}
         <div
           className="flex items-center gap-2 cursor-pointer mb-4"
           onClick={() => setTodoOpen(!todoOpen)}
@@ -184,11 +226,33 @@ export default function MyTasks() {
               <table className="w-full">
                 <thead className="bg-[#1c3145] text-white">
                   <tr>
-                    <th className="px-6 py-2 text-left text-sm font-medium">Task</th>
-                    <th className="px-6 py-2 text-left text-sm font-medium">Project</th>
-                    <th className="px-6 py-2 text-left text-sm font-medium">Status</th>
-                    <th className="px-6 py-2 text-left text-sm font-medium">Due</th>
-                    <th className="px-6 py-2 text-right text-sm font-medium">Actions</th>
+                    <th
+                      className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                      onClick={() => handleTaskSort("title")}
+                    >
+                      Task{renderSortArrow("title")}
+                    </th>
+                    <th
+                      className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                      onClick={() => handleTaskSort("project")}
+                    >
+                      Project{renderSortArrow("project")}
+                    </th>
+                    <th
+                      className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                      onClick={() => handleTaskSort("status")}
+                    >
+                      Status{renderSortArrow("status")}
+                    </th>
+                    <th
+                      className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                      onClick={() => handleTaskSort("due_date")}
+                    >
+                      Due{renderSortArrow("due_date")}
+                    </th>
+                    <th className="px-6 py-2 text-right text-sm font-medium">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#1c3145]/40 bg-white">
@@ -198,10 +262,7 @@ export default function MyTasks() {
                         {task.title}
                       </td>
                       <td className="px-6 py-3 whitespace-nowrap text-sm">
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(task.project.status)}
-                          <span>{task.project.name}</span>
-                        </div>
+                        {task.project.name}
                       </td>
                       <td className="px-6 py-3 whitespace-nowrap text-sm flex items-center gap-2">
                         {getTaskStatusIcon(task.status)}
@@ -243,8 +304,8 @@ export default function MyTasks() {
 
       <hr className="mb-8 border-gray-300" />
 
+      {/* Completed tasks section */}
       <section className="mb-8">
-        {/* Completed tasks section */}
         <div
           className="flex items-center gap-2 cursor-pointer mb-4"
           onClick={() => setCompletedOpen(!completedOpen)}
@@ -266,11 +327,33 @@ export default function MyTasks() {
               <table className="w-full">
                 <thead className="bg-[#1c3145] text-white">
                   <tr>
-                    <th className="px-6 py-2 text-left text-sm font-medium">Task</th>
-                    <th className="px-6 py-2 text-left text-sm font-medium">Project</th>
-                    <th className="px-6 py-2 text-left text-sm font-medium">Status</th>
-                    <th className="px-6 py-2 text-left text-sm font-medium">Due</th>
-                    <th className="px-6 py-2 text-right text-sm font-medium">Actions</th>
+                    <th
+                      className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                      onClick={() => handleTaskSort("title")}
+                    >
+                      Task{renderSortArrow("title")}
+                    </th>
+                    <th
+                      className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                      onClick={() => handleTaskSort("project")}
+                    >
+                      Project{renderSortArrow("project")}
+                    </th>
+                    <th
+                      className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                      onClick={() => handleTaskSort("status")}
+                    >
+                      Status{renderSortArrow("status")}
+                    </th>
+                    <th
+                      className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                      onClick={() => handleTaskSort("due_date")}
+                    >
+                      Due{renderSortArrow("due_date")}
+                    </th>
+                    <th className="px-6 py-2 text-right text-sm font-medium">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#1c3145]/40 bg-white">
@@ -280,10 +363,7 @@ export default function MyTasks() {
                         {task.title}
                       </td>
                       <td className="px-6 py-3 whitespace-nowrap text-sm">
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(task.project.status)}
-                          <span>{task.project.name}</span>
-                        </div>
+                        {task.project.name}
                       </td>
                       <td className="px-6 py-3 whitespace-nowrap text-sm flex items-center gap-2">
                         {getTaskStatusIcon(task.status)}
