@@ -14,6 +14,7 @@ import {
 import NewTaskDialog from "./NewTaskDialog";
 import EditTaskDialog from "./EditTaskDialog";
 import NewKPIDialog from "./NewKPIDialog";
+import ProjectTimeline from "./ProjectTimeline";
 import { Select } from "./ui/select";
 import { Button } from "./ui/button";
 import EditKPIDialog from "./EditKPIDialog";
@@ -677,6 +678,13 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
             </div>
           )}
         </section>
+
+        <hr className="mb-8 border-gray-300" />
+
+      {/* Project Timeline Section */}
+        <section className="mb-8">
+          <ProjectTimeline projectId={project.id} />
+          </section>
 
         <hr className="mb-8 border-gray-300" />
 
