@@ -22,13 +22,13 @@ export default function MyTasks() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [todoOpen, setTodoOpen] = useState(true);
-  const [completedOpen, setCompletedOpen] = useState(true);
+  const [completedOpen, setCompletedOpen] = useState(false); // Changed to false to collapse by default
 
-  // Sorting state for tasks
+  // Updated default sort config to due_date
   const [taskSortConfig, setTaskSortConfig] = useState<{
     column: TaskSortColumn;
     direction: "asc" | "desc";
-  }>({ column: "title", direction: "asc" });
+  }>({ column: "due_date", direction: "asc" });
 
   const supabase = createClient();
 
