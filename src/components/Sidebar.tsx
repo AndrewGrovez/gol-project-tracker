@@ -11,7 +11,8 @@ import {
   TrendingDown,
   BarChart2,
   ChartLine,
-  LogOut, // LogOut icon imported
+  LogOut,
+  LayoutDashboard, // Dashboard icon imported
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
@@ -44,18 +45,19 @@ const Sidebar = () => {
 
   const menuItems = [
     { icon: Home, label: "Projects", path: "/" },
+    { icon: LayoutDashboard, label: "My Dashboard", path: "/dashboard" }, // Added Dashboard
     { icon: CheckSquare, label: "My Tasks", path: "/tasks" },
     { icon: CalendarRange, label: "Year-By-Year", path: "/yearbyyear" },
     { icon: TrendingDown, label: "Churn Rates", path: "/churn" },
     { icon: ChartLine, label: "Social Analytics", path: "/social-analytics" },
     { icon: Wallet, label: "Weekly Income", path: "/income" },
     { icon: BarChart2, label: "Web Analytics", path: "/web-analytics" },
-    { icon: LogOut, label: "Sign Out" }, // Sign Out item added
+    { icon: LogOut, label: "Sign Out" },
   ];
 
   return (
-    <div className="fixed left-0 top-0 h-full w-56 bg-[#1c3145] text-white p-2 shadow-lg flex flex-col justify-between"> {/* Flex and justify-between added */}
-      <div> {/* Container for logo and menu items */}
+    <div className="fixed left-0 top-0 h-full w-56 bg-[#1c3145] text-white p-2 shadow-lg flex flex-col justify-between">
+      <div>
         <div className="py-2 mb-4 flex justify-center">
           <Image
             src="/GolLogo.png"
@@ -67,13 +69,13 @@ const Sidebar = () => {
           />
         </div>
         <div className="space-y-1">
-          {menuItems.slice(0, menuItems.length - 1).map((item) => { {/* Slice to exclude Sign Out */}
+          {menuItems.slice(0, menuItems.length - 1).map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.path;
             return (
               <button
                 key={item.path}
-                onClick={() => item.path ? router.push(item.path) : {}} // Conditional navigation
+                onClick={() => item.path ? router.push(item.path) : {}}
                 className={cn(
                   "w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
                   "hover:bg-[#81bb26]/20",
@@ -90,15 +92,15 @@ const Sidebar = () => {
 
       {/* Sign Out Button - Placed at the bottom */}
       <button
-     onClick={handleSignOut}
-     className={cn(
-       "w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors mt-4",
-       "transparent" // Removed hover:bg-red-500/20 as well for a cleaner look
-     )}
-   >
-     <LogOut className="w-5 h-5" />
-     <span className="font-medium">Sign Out</span>
-   </button>
+        onClick={handleSignOut}
+        className={cn(
+          "w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors mt-4",
+          "transparent"
+        )}
+      >
+        <LogOut className="w-5 h-5" />
+        <span className="font-medium">Sign Out</span>
+      </button>
     </div>
   );
 };
