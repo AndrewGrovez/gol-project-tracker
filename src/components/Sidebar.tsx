@@ -12,10 +12,18 @@ import {
   BarChart2,
   ChartLine,
   LogOut,
-  LayoutDashboard, // Dashboard icon imported
+  LayoutDashboard,
+  PieChart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
+
+interface MenuItem {
+  icon: React.ElementType;
+  label: string;
+  path?: string;
+  children?: MenuItem[];
+}
 
 const Sidebar = () => {
   const router = useRouter();
@@ -43,16 +51,22 @@ const Sidebar = () => {
     router.push('/login');
   };
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     { icon: Home, label: "Projects", path: "/" },
-    { icon: LayoutDashboard, label: "My Dashboard", path: "/dashboard" }, // Added Dashboard
+    { icon: LayoutDashboard, label: "My Dashboard", path: "/dashboard" },
     { icon: CheckSquare, label: "My Tasks", path: "/tasks" },
     { icon: CalendarRange, label: "Year-By-Year", path: "/yearbyyear" },
-    { icon: TrendingDown, label: "Churn Rates", path: "/churn" },
+    { 
+      icon: TrendingDown, 
+      label: "Churn Rates", 
+      path: "/churn",
+      children: [
+        { icon: PieChart, label: "Churn Analysis", path: "/churn-analysis" }
+      ]
+    },
     { icon: ChartLine, label: "Social Analytics", path: "/social-analytics" },
     { icon: Wallet, label: "Weekly Income", path: "/income" },
-    { icon: BarChart2, label: "Web Analytics", path: "/web-analytics" },
-    { icon: LogOut, label: "Sign Out" },
+    { icon: BarChart2, label: "Web Analytics", path: "/web-analytics" }
   ];
 
   return (
@@ -69,22 +83,45 @@ const Sidebar = () => {
           />
         </div>
         <div className="space-y-1">
-          {menuItems.slice(0, menuItems.length - 1).map((item) => {
+          {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.path;
             return (
-              <button
-                key={item.path}
-                onClick={() => item.path ? router.push(item.path) : {}}
-                className={cn(
-                  "w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
-                  "hover:bg-[#81bb26]/20",
-                  isActive ? "bg-[#81bb26]/30" : "transparent"
+              <div key={item.label}>
+                <button
+                  onClick={() => item.path && router.push(item.path)}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
+                    "hover:bg-[#81bb26]/20",
+                    isActive ? "bg-[#81bb26]/30" : "transparent"
+                  )}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="font-medium">{item.label}</span>
+                </button>
+                {item.children && (
+                  <div className="ml-6 mt-1 space-y-1">
+                    {item.children.map((child) => {
+                      const ChildIcon = child.icon;
+                      const isChildActive = pathname === child.path;
+                      return (
+                        <button
+                          key={child.label}
+                          onClick={() => child.path && router.push(child.path)}
+                          className={cn(
+                            "w-full flex items-center gap-2 px-4 py-1 rounded-lg transition-colors",
+                            "hover:bg-[#81bb26]/20",
+                            isChildActive ? "bg-[#81bb26]/30" : "transparent"
+                          )}
+                        >
+                          <ChildIcon className="w-4 h-4" />
+                          <span className="font-medium text-sm">{child.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
-              >
-                <Icon className="w-5 h-5" />
-                <span className="font-medium">{item.label}</span>
-              </button>
+              </div>
             );
           })}
         </div>
