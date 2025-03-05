@@ -14,6 +14,7 @@ import {
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
+import EditTaskDialog from "@/components/EditTaskDialog";
 
 type TaskSortColumn = "title" | "project" | "status" | "due_date";
 
@@ -285,14 +286,26 @@ export default function MyTasks() {
                           : "-"}
                       </td>
                       <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                          onClick={() => deleteTask(task.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex justify-end items-center gap-2">
+                          <EditTaskDialog
+                            task={task}
+                            onTaskUpdated={(updatedTask) => {
+                              setTasks((currentTasks) =>
+                                currentTasks.map((t) =>
+                                  t.id === updatedTask.id ? {...t, ...updatedTask} : t
+                                )
+                              );
+                            }}
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                            onClick={() => deleteTask(task.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -386,14 +399,26 @@ export default function MyTasks() {
                           : "-"}
                       </td>
                       <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                          onClick={() => deleteTask(task.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex justify-end items-center gap-2">
+                          <EditTaskDialog
+                            task={task}
+                            onTaskUpdated={(updatedTask) => {
+                              setTasks((currentTasks) =>
+                                currentTasks.map((t) =>
+                                  t.id === updatedTask.id ? {...t, ...updatedTask} : t
+                                )
+                              );
+                            }}
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                            onClick={() => deleteTask(task.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
