@@ -105,11 +105,11 @@ const BlockBookersDashboard: React.FC = () => {
   const recommendations: Recommendation[] = [
     {
       title: 'Core Customer Focus',
-      description: 'Your primary demographic is males aged 35-44. Consider creating special offerings, leagues, or tournaments specifically for this age group.'
+      description: 'Our primary demographic is males aged 35-44. Consider creating special offerings, leagues, or tournaments specifically for this age group.'
     },
     {
       title: 'Local Marketing',
-      description: 'The CF5 area is your strongest catchment area. Consider targeted leaflet drops or local advertising in this area to further strengthen your presence.'
+      description: 'The CF5 area is our strongest catchment area. Consider targeted leaflet drops or local advertising in this area to further strengthen our presence.'
     },
     {
       title: 'Data Collection',
@@ -177,8 +177,8 @@ const BlockBookersDashboard: React.FC = () => {
             <div className="bg-white rounded-lg shadow-md p-6 mb-8">
               <h2 className="text-2xl font-semibold mb-4">Overview</h2>
               <p className="text-gray-700 mb-4">
-                Analysis of 99 block bookers at the 5-a-side centre located on Lawrenny Avenue, Cardiff. 
-                This dashboard provides insights into demographics and geographical distribution of your customer base.
+                Analysis of 99 block bookers at our centre. 
+                This dashboard provides insights into demographics and geographical distribution of our customer base.
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
@@ -215,7 +215,7 @@ const BlockBookersDashboard: React.FC = () => {
                     <li>CF5 area (closest to Lawrenny Avenue) has the highest concentration</li>
                     <li>73 unique postcodes across 23 different postcode areas</li>
                     <li>Strong representation from Penarth (CF64) and North Cardiff (CF14)</li>
-                    <li>Some customers from as far as London and Swansea</li>
+                    <li>Some customers from as Swansea</li>
                   </ul>
                 </div>
               </div>
@@ -409,10 +409,10 @@ const BlockBookersDashboard: React.FC = () => {
                 <h4 className="font-semibold mb-2">Travel Distance Observations</h4>
                 <ul className="list-disc pl-5 space-y-1">
                   <li>Most bookers come from Cardiff postcodes (CF)</li>
-                  <li>CF5 area (including Canton, Ely, and Caerau) is closest to your Lawrenny Avenue location</li>
+                  <li>CF5 area (including Canton, Ely, and Caerau) is closest to us</li>
                   <li>Strong representation from Penarth (CF64) despite being further away</li>
                   <li>North Cardiff (CF14) shows good representation</li>
-                  <li>Some customers travel significant distances from Newport (NP), Swansea (SA), and London areas</li>
+                  <li>Some customers travel significant distances from Newport (NP) and Swansea (SA)</li>
                 </ul>
               </div>
             </div>
@@ -480,7 +480,7 @@ const BlockBookersDashboard: React.FC = () => {
                   <li>Focus on collecting County information (96% missing)</li>
                   <li>Improve collection of Address Line 2 (46% missing) and Postcode (26% missing)</li>
                   <li>Implement a standardised format for address collection</li>
-                  <li>Consider making certain fields mandatory in your booking system</li>
+                  <li>Make certain fields mandatory in Spawtz</li>
                   <li>Regularise data collection processes to ensure consistency</li>
                 </ul>
               </div>
@@ -524,7 +524,7 @@ const BlockBookersDashboard: React.FC = () => {
                   <ul className="list-disc pl-5 space-y-1">
                     <li>Expand marketing reach to underrepresented areas</li>
                     <li>Implement seasonal promotions and special events</li>
-                    <li>Develop a comprehensive customer retention strategy</li>
+                    <li>Develop a comprehensive block bookers retention strategy</li>
                   </ul>
                 </div>
               </div>

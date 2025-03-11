@@ -13,7 +13,8 @@ import {
   ChartLine,
   LogOut,
   LayoutDashboard,
-  PieChart
+  PieChart,
+  Users
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
@@ -64,6 +65,7 @@ const Sidebar = () => {
         { icon: PieChart, label: "Churn Analysis", path: "/churn-analysis" }
       ]
     },
+    { icon: Users, label: "BB Analysis", path: "/block-bookers" },
     { icon: ChartLine, label: "Social Analytics", path: "/social-analytics" },
     { icon: Wallet, label: "Weekly Income", path: "/income" },
     { icon: BarChart2, label: "Web Analytics", path: "/web-analytics" }
@@ -86,6 +88,7 @@ const Sidebar = () => {
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.path;
+            const hasActiveChild = item.children?.some(child => pathname === child.path);
             return (
               <div key={item.label}>
                 <button
@@ -93,7 +96,7 @@ const Sidebar = () => {
                   className={cn(
                     "w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
                     "hover:bg-[#81bb26]/20",
-                    isActive ? "bg-[#81bb26]/30" : "transparent"
+                    isActive || hasActiveChild ? "bg-[#81bb26]/30" : "transparent"
                   )}
                 >
                   <Icon className="w-5 h-5" />
