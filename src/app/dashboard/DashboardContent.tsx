@@ -2,10 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, Clock, AlertTriangle, Activity } from "lucide-react";
+import { CheckCircle, Clock, AlertTriangle, Activity, MessageSquare } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import type { Project, Task } from "@/types/database.types";
+import type { Project, Task, Comment } from "@/types/database.types";
 
 interface DashboardContentProps {
   userId: string;
@@ -16,6 +16,14 @@ interface TaskWithProject extends Task {
     name: string;
     id: string;
   };
+}
+
+interface CommentWithDetails extends Comment {
+  project: {
+    name: string;
+    id: string;
+  };
+  author_name: string;
 }
 
 interface ProjectSummary {
@@ -53,6 +61,7 @@ export default function DashboardContent({ userId }: DashboardContentProps) {
     dueSoon: [],
   });
   const [recentProjects, setRecentProjects] = useState<Project[]>([]);
+  const [recentComments, setRecentComments] = useState<CommentWithDetails[]>([]);
   const router = useRouter();
   const supabase = createClient();
 
@@ -151,6 +160,43 @@ export default function DashboardContent({ userId }: DashboardContentProps) {
         });
 
         setTaskSummary(taskStats);
+
+        // Fetch recent comments from projects the user has access to
+        const projectIds = projectsData.map((project: Project) => project.id);
+        if (projectIds.length > 0) {
+          const { data: comments } = await supabase
+            .from("comments")
+            .select(`
+              *,
+              project:project_id (
+                id,
+                name
+              )
+            `)
+            .in("project_id", projectIds)
+            .order("created_at", { ascending: false })
+            .limit(10);
+
+          if (comments) {
+            // Fetch author names for the comments
+            const userIds = [...new Set(comments.map(c => c.user_id))];
+            const { data: profiles } = await supabase
+              .from("profiles")
+              .select("id, display_name")
+              .in("id", userIds);
+
+            // Create a map of user IDs to names
+            const userMap = new Map(profiles?.map(p => [p.id, p.display_name]) || []);
+
+            // Add author names to comments
+            const commentsWithAuthors = comments.map(comment => ({
+              ...comment,
+              author_name: userMap.get(comment.user_id) || 'Unknown User'
+            }));
+
+            setRecentComments(commentsWithAuthors);
+          }
+        }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -184,6 +230,27 @@ export default function DashboardContent({ userId }: DashboardContentProps) {
       month: "short",
       year: "numeric",
     });
+  }
+
+  // Format relative time (e.g., "2 days ago", "5 hours ago")
+  function formatRelativeTime(dateString: string) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays > 0) {
+      return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+    } else if (diffHours > 0) {
+      return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+    } else if (diffMins > 0) {
+      return `${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'} ago`;
+    } else {
+      return 'Just now';
+    }
   }
 
   return (
@@ -386,6 +453,48 @@ export default function DashboardContent({ userId }: DashboardContentProps) {
             ) : (
               <div className="text-gray-600 py-4 text-center">
                 No recent projects found
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Comments Section */}
+      <div className="mt-6">
+        <Card className="shadow-md hover:shadow-lg transition-all duration-300">
+          <CardContent className="pt-6">
+            <h3 className="text-xl font-semibold mb-4 flex items-center">
+              <MessageSquare className="w-5 h-5 mr-2 text-purple-500" />
+              Recent Comments
+            </h3>
+            {recentComments.length > 0 ? (
+              <div className="space-y-4">
+                {recentComments.map((comment) => (
+                  <div
+                    key={comment.id}
+                    className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                    onClick={() => router.push(`/projects/${comment.project_id}`)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="font-medium">{comment.author_name}</span>
+                      <span className="text-xs text-gray-500">
+                        {formatRelativeTime(comment.created_at)}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-800 mt-2">
+                      {comment.content.length > 100
+                        ? comment.content.slice(0, 100) + "..."
+                        : comment.content}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-2">
+                      Project: {comment.project.name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-gray-600 py-4 text-center">
+                No recent comments found
               </div>
             )}
           </CardContent>
