@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, Clock, AlertTriangle, Activity, MessageSquare } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import type { Project, Task, Comment } from "@/types/database.types";
+import type { Project, Task, Comment, KPI } from "@/types/database.types";
 
 interface DashboardContentProps {
   userId: string;
@@ -24,6 +24,10 @@ interface CommentWithDetails extends Comment {
     id: string;
   };
   author_name: string;
+}
+
+interface KPIWithProject extends KPI {
+  project_name: string;
 }
 
 interface ProjectSummary {
@@ -62,6 +66,13 @@ export default function DashboardContent({ userId }: DashboardContentProps) {
   });
   const [recentProjects, setRecentProjects] = useState<Project[]>([]);
   const [recentComments, setRecentComments] = useState<CommentWithDetails[]>([]);
+  const [kpis, setKpis] = useState<{
+    completed: KPIWithProject[];
+    upcoming: KPIWithProject[];
+  }>({
+    completed: [],
+    upcoming: [],
+  });
   const router = useRouter();
   const supabase = createClient();
 
@@ -196,6 +207,55 @@ export default function DashboardContent({ userId }: DashboardContentProps) {
 
             setRecentComments(commentsWithAuthors);
           }
+        }
+
+        // Fetch KPI data
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Start of the day
+
+        // Create a map of project IDs to project names
+        const projectsMap = new Map(projectsData.map((project: Project) => [project.id, project.name]));
+
+        // Fetch KPIs for the projects user has access to
+        if (projectIds.length > 0) {
+          const { data: kpisData, error: kpisError } = await supabase
+            .from("kpis")
+            .select("*")
+            .in("project_id", projectIds)
+            .order("measure_date", { ascending: false });
+
+          if (kpisError) throw kpisError;
+
+          // Process KPIs into completed and upcoming
+          const completed: KPIWithProject[] = [];
+          const upcoming: KPIWithProject[] = [];
+
+          kpisData?.forEach(kpi => {
+            const kpiDate = new Date(kpi.measure_date);
+            kpiDate.setHours(0, 0, 0, 0); // Start of the day
+
+            const kpiWithProject = {
+              ...kpi,
+              project_name: projectsMap.get(kpi.project_id) || 'Unknown Project'
+            };
+
+            if (kpiDate < today) {
+              completed.push(kpiWithProject);
+            } else {
+              upcoming.push(kpiWithProject);
+            }
+          });
+
+          // Sort completed by measure_date descending (most recent first)
+          completed.sort((a, b) => new Date(b.measure_date).getTime() - new Date(a.measure_date).getTime());
+
+          // Sort upcoming by measure_date ascending (nearest future date first)
+          upcoming.sort((a, b) => new Date(a.measure_date).getTime() - new Date(b.measure_date).getTime());
+
+          setKpis({
+            completed: completed.slice(0, 5), // Only take the 5 most recent completed KPIs
+            upcoming: upcoming.slice(0, 6), // Limit to 6 upcoming KPIs
+          });
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -350,7 +410,7 @@ export default function DashboardContent({ userId }: DashboardContentProps) {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Tasks Due Soon Section */}
         <Card className="shadow-md hover:shadow-lg transition-all duration-300">
           <CardContent className="pt-6">
@@ -459,47 +519,133 @@ export default function DashboardContent({ userId }: DashboardContentProps) {
         </Card>
       </div>
 
-      {/* Recent Comments Section */}
-      <div className="mt-6">
-        <Card className="shadow-md hover:shadow-lg transition-all duration-300">
-          <CardContent className="pt-6">
-            <h3 className="text-xl font-semibold mb-4 flex items-center">
-              <MessageSquare className="w-5 h-5 mr-2 text-purple-500" />
-              Recent Comments
-            </h3>
-            {recentComments.length > 0 ? (
-              <div className="space-y-4">
-                {recentComments.map((comment) => (
-                  <div
-                    key={comment.id}
-                    className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
-                    onClick={() => router.push(`/projects/${comment.project_id}`)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <span className="font-medium">{comment.author_name}</span>
-                      <span className="text-xs text-gray-500">
-                        {formatRelativeTime(comment.created_at)}
-                      </span>
+      {/* Recently Completed KPIs Section - Full Width */}
+      <Card className="shadow-md hover:shadow-lg transition-all duration-300 mb-8">
+        <CardContent className="pt-6">
+          <h3 className="text-xl font-semibold mb-4">Recently Completed KPIs</h3>
+          {kpis.completed.length > 0 ? (
+            <div className="space-y-4">
+              {kpis.completed.map((kpi) => (
+                <div
+                  key={kpi.id}
+                  className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                  onClick={() => router.push(`/projects/${kpi.project_id}`)}
+                >
+                  <div className="font-medium text-base mb-4">
+                    <span className="bg-blue-50 px-2 py-1 rounded-md">
+                      <span className="text-gray-600">KPI:</span> {kpi.title}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="md:col-span-4">
+                      <p className="text-sm text-gray-500">Project</p>
+                      <p className="font-medium">{kpi.project_name}</p>
                     </div>
-                    <div className="text-sm text-gray-800 mt-2">
-                      {comment.content.length > 100
-                        ? comment.content.slice(0, 100) + "..."
-                        : comment.content}
+                    <div className="md:col-span-2">
+                      <p className="text-sm text-gray-500">Date Measured</p>
+                      <p className="font-medium">{formatDate(kpi.measure_date)}</p>
                     </div>
-                    <div className="text-xs text-gray-600 mt-2">
-                      Project: {comment.project.name}
+                    <div className="md:col-span-6">
+                      <p className="text-sm text-gray-500">Result</p>
+                      <p className="font-medium text-green-600">{kpi.result}</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-gray-600 py-4 text-center">
-                No recent comments found
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-gray-600 py-4 text-center">
+              No completed KPIs found
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Upcoming KPIs Section - Full Width */}
+      <Card className="shadow-md hover:shadow-lg transition-all duration-300 mb-8">
+        <CardContent className="pt-6">
+          <h3 className="text-xl font-semibold mb-4">Upcoming KPIs</h3>
+          {kpis.upcoming.length > 0 ? (
+            <div className="space-y-4">
+              {kpis.upcoming.map((kpi) => (
+                <div
+                  key={kpi.id}
+                  className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                  onClick={() => router.push(`/projects/${kpi.project_id}`)}
+                >
+                  <div className="font-medium text-base mb-3">
+                    <span className="bg-blue-50 px-2 py-1 rounded-md">
+                      <span className="text-gray-600">KPI:</span> {kpi.title}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Project</p>
+                      <p className="font-medium">{kpi.project_name}</p>
+                    </div>
+                    <div className="flex justify-start md:justify-end items-end">
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          new Date(kpi.measure_date).toDateString() ===
+                          new Date().toDateString()
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
+                      >
+                        {formatDate(kpi.measure_date)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-gray-600 py-4 text-center">
+              No upcoming KPIs scheduled
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent Comments Section */}
+      <Card className="shadow-md hover:shadow-lg transition-all duration-300">
+        <CardContent className="pt-6">
+          <h3 className="text-xl font-semibold mb-4 flex items-center">
+            <MessageSquare className="w-5 h-5 mr-2 text-purple-500" />
+            Recent Comments
+          </h3>
+          {recentComments.length > 0 ? (
+            <div className="space-y-4">
+              {recentComments.map((comment) => (
+                <div
+                  key={comment.id}
+                  className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                  onClick={() => router.push(`/projects/${comment.project_id}`)}
+                >
+                  <div className="flex justify-between items-start">
+                    <span className="font-medium">{comment.author_name}</span>
+                    <span className="text-xs text-gray-500">
+                      {formatRelativeTime(comment.created_at)}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-800 mt-2">
+                    {comment.content.length > 100
+                      ? comment.content.slice(0, 100) + "..."
+                      : comment.content}
+                  </div>
+                  <div className="text-xs text-gray-600 mt-2">
+                    Project: {comment.project.name}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-gray-600 py-4 text-center">
+              No recent comments found
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
