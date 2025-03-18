@@ -14,7 +14,8 @@ import {
   LogOut,
   LayoutDashboard,
   PieChart,
-  Users
+  Users,
+  Trophy
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
@@ -66,6 +67,7 @@ const Sidebar = () => {
       ]
     },
     { icon: Users, label: "BB Analysis", path: "/block-bookers" },
+    { icon: Trophy, label: "League Analysis", path: "/league-organisers" },
     { icon: ChartLine, label: "Social Analytics", path: "/social-analytics" },
     { icon: Wallet, label: "Weekly Income", path: "/income" },
     { icon: BarChart2, label: "Web Analytics", path: "/web-analytics" }
