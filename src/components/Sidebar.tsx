@@ -15,16 +15,17 @@ import {
   LayoutDashboard,
   PieChart,
   Users,
-  Trophy
+  Trophy,
+  Calendar, // Added for Bookings Analysis
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
 
 interface MenuItem {
-  icon: React.ElementType;
+  icon?: React.ElementType;
   label: string;
   path?: string;
-  children?: MenuItem[];
+  isHeader?: boolean;
 }
 
 const Sidebar = () => {
@@ -58,74 +59,72 @@ const Sidebar = () => {
     { icon: LayoutDashboard, label: "My Dashboard", path: "/dashboard" },
     { icon: CheckSquare, label: "My Tasks", path: "/tasks" },
     { icon: CalendarRange, label: "Year-By-Year", path: "/yearbyyear" },
-    { 
-      icon: TrendingDown, 
-      label: "Churn Rates", 
-      path: "/churn",
-      children: [
-        { icon: PieChart, label: "Churn Analysis", path: "/churn-analysis" }
-      ]
-    },
-    { icon: Users, label: "BB Analysis", path: "/block-bookers" },
+    { isHeader: true, label: "Leagues" },
+    { icon: TrendingDown, label: "Churn Rates", path: "/churn" },
+    { icon: PieChart, label: "Churn Analysis", path: "/churn-analysis" },
     { icon: Trophy, label: "League Analysis", path: "/league-organisers" },
+    { isHeader: true, label: "Bookings" },
+    { icon: Users, label: "BB Analysis", path: "/block-bookers" },
+    { icon: Calendar, label: "Bookings Analysis", path: "/bookings-analysis" },
+    { isHeader: true, label: "Analytics" },
     { icon: ChartLine, label: "Social Analytics", path: "/social-analytics" },
+    { icon: BarChart2, label: "Web Analytics", path: "/web-analytics" },
     { icon: Wallet, label: "Weekly Income", path: "/income" },
-    { icon: BarChart2, label: "Web Analytics", path: "/web-analytics" }
   ];
 
   return (
-    <div className="fixed left-0 top-0 h-full w-56 bg-[#1c3145] text-white p-2 shadow-lg flex flex-col justify-between">
-      <div>
-        <div className="py-2 mb-4 flex justify-center">
-          <Image
-            src="/GolLogo.png"
-            alt="GOL Logo"
-            width={120}
-            height={38}
-            className="object-contain"
-            priority
-          />
-        </div>
+    <div className="fixed left-0 top-0 h-full w-56 bg-[#1c3145] text-white p-2 shadow-lg flex flex-col">
+      <div className="py-2 mb-4 flex justify-center">
+        <Image
+          src="/GolLogo.png"
+          alt="GOL Logo"
+          width={120}
+          height={38}
+          className="object-contain"
+          priority
+        />
+      </div>
+      
+      {/* Scrollable menu area - with only the scrollbar thumb visible on hover */}
+      <div className="flex-1 overflow-y-auto pb-2 
+        [&::-webkit-scrollbar]:hidden hover:[&::-webkit-scrollbar]:block 
+        [&::-webkit-scrollbar]:w-1.5
+        [&::-webkit-scrollbar-track]:bg-transparent
+        [&::-webkit-scrollbar-track-piece]:bg-transparent
+        [&::-webkit-scrollbar-corner]:bg-transparent
+        [&::-webkit-scrollbar-thumb]:bg-gray-500/50
+        [&::-webkit-scrollbar-thumb]:rounded-full
+        [-ms-overflow-style:none] hover:[-ms-overflow-style:auto]
+        [scrollbar-width:none] hover:[scrollbar-width:thin]
+        [scrollbar-color:rgba(107,114,128,0.5)_transparent]">
         <div className="space-y-1">
-          {menuItems.map((item) => {
+          {menuItems.map((item, index) => {
+            if (item.isHeader) {
+              return (
+                <div key={`header-${index}`} className="px-4 py-2 mt-3 mb-1">
+                  <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">
+                    {item.label}
+                  </span>
+                </div>
+              );
+            }
+
             const Icon = item.icon;
             const isActive = pathname === item.path;
-            const hasActiveChild = item.children?.some(child => pathname === child.path);
+            
             return (
-              <div key={item.label}>
+              <div key={`item-${index}`}>
                 <button
                   onClick={() => item.path && router.push(item.path)}
                   className={cn(
                     "w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
                     "hover:bg-[#81bb26]/20",
-                    isActive || hasActiveChild ? "bg-[#81bb26]/30" : "transparent"
+                    isActive ? "bg-[#81bb26]/30" : "transparent"
                   )}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span className="font-medium">{item.label}</span>
+                  {Icon && <Icon className="w-5 h-5" />}
+                  <span className="font-medium text-sm">{item.label}</span>
                 </button>
-                {item.children && (
-                  <div className="ml-6 mt-1 space-y-1">
-                    {item.children.map((child) => {
-                      const ChildIcon = child.icon;
-                      const isChildActive = pathname === child.path;
-                      return (
-                        <button
-                          key={child.label}
-                          onClick={() => child.path && router.push(child.path)}
-                          className={cn(
-                            "w-full flex items-center gap-2 px-4 py-1 rounded-lg transition-colors",
-                            "hover:bg-[#81bb26]/20",
-                            isChildActive ? "bg-[#81bb26]/30" : "transparent"
-                          )}
-                        >
-                          <ChildIcon className="w-4 h-4" />
-                          <span className="font-medium text-sm">{child.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
             );
           })}
@@ -136,7 +135,7 @@ const Sidebar = () => {
       <button
         onClick={handleSignOut}
         className={cn(
-          "w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors mt-4",
+          "w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors mt-2",
           "transparent"
         )}
       >
