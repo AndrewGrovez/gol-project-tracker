@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import {
@@ -16,7 +16,7 @@ import {
   PieChart,
   Users,
   Trophy,
-  Calendar, // Added for Bookings Analysis
+  Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
@@ -32,9 +32,24 @@ const Sidebar = () => {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  
+  // Check authentication on component mount
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        setIsAuthenticated(!!data?.user && !error);
+      } catch {
+        // Empty catch block (no parameter) to avoid ESLint warning
+        setIsAuthenticated(false);
+      }
+    }
+    checkAuth();
+  }, [supabase]);
 
-  // If on the login page, show only the GolLogo.
-  if (pathname === "/login") {
+  // If on the login page or not authenticated, show only the logo
+  if (pathname === "/login" || !isAuthenticated) {
     return (
       <div className="fixed left-0 top-0 h-full w-56 bg-[#1c3145] text-white p-4 shadow-lg flex items-center justify-center">
         <Image
