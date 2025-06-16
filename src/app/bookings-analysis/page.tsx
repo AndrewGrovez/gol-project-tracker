@@ -657,8 +657,8 @@ const BookingAnalysisDashboard: React.FC = () => {
                     <li>October has the highest booking volume (514 bookings)</li>
                     <li>December shows the lowest activity (293 bookings)</li>
                     <li>January shows strong recovery after December dip</li>
-                    <li>Spring/Summer months (Mar-Aug) average 416 bookings per month</li>
-                    <li>Autumn/Winter months (Sep-Feb) average 430 bookings per month</li>
+                    <li>Spring/Summer months (March-August) average 416 bookings per month</li>
+                    <li>Autumn/Winter months (September-February) average 430 bookings per month</li>
                   </ul>
                 </div>
                 
