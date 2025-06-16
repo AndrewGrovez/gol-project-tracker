@@ -20,12 +20,22 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
+// Admin UIDs that can see analytics
+const ADMIN_UIDS = [
+  '5e7d4220-1d39-4622-9770-a6575d627c90',
+  'e394f160-e77a-4276-8b74-f7639530d116',
+  '300a3e45-48c7-4de4-8516-b737e18dcb23',
+  'b9af8044-830d-4aef-aa11-40927a22badd',
+  '9a6a4f60-0fcf-4afc-a57c-bdb5d91045db',
+  '0c218add-950b-45dc-8b58-75c92c7d53bc'
+];
 
 interface MenuItem {
   icon?: React.ElementType;
   label: string;
   path?: string;
   isHeader?: boolean;
+  requiresAnalytics?: boolean; // New property to control analytics access
 }
 
 const Sidebar = () => {
@@ -33,20 +43,26 @@ const Sidebar = () => {
   const pathname = usePathname();
   const supabase = createClient();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
-  // Check authentication on component mount
+  // Check authentication and get user ID
   useEffect(() => {
     async function checkAuth() {
       try {
         const { data, error } = await supabase.auth.getUser();
-        setIsAuthenticated(!!data?.user && !error);
+        const isAuth = !!data?.user && !error;
+        setIsAuthenticated(isAuth);
+        setCurrentUserId(data?.user?.id || null);
       } catch {
-        // Empty catch block (no parameter) to avoid ESLint warning
         setIsAuthenticated(false);
+        setCurrentUserId(null);
       }
     }
     checkAuth();
   }, [supabase]);
+
+  // Check if current user is admin
+  const isAdmin = currentUserId && ADMIN_UIDS.includes(currentUserId);
 
   // If on the login page or not authenticated, show only the logo
   if (pathname === "/login" || !isAuthenticated) {
@@ -69,7 +85,7 @@ const Sidebar = () => {
     router.push('/login');
   };
 
-  const menuItems: MenuItem[] = [
+  const allMenuItems: MenuItem[] = [
     { icon: Home, label: "Projects", path: "/" },
     { icon: LayoutDashboard, label: "My Dashboard", path: "/dashboard" },
     { icon: CheckSquare, label: "My Tasks", path: "/tasks" },
@@ -81,11 +97,35 @@ const Sidebar = () => {
     { isHeader: true, label: "Bookings" },
     { icon: Users, label: "BB Analysis", path: "/block-bookers" },
     { icon: Calendar, label: "Bookings Analysis", path: "/bookings-analysis" },
-    { isHeader: true, label: "Analytics" },
-    { icon: ChartLine, label: "Social Analytics", path: "/social-analytics" },
-    { icon: BarChart2, label: "Web Analytics", path: "/web-analytics" },
-    { icon: Wallet, label: "Weekly Income", path: "/income" },
+    { isHeader: true, label: "Analytics", requiresAnalytics: true },
+    { icon: ChartLine, label: "Social Analytics", path: "/social-analytics", requiresAnalytics: true },
+    { icon: BarChart2, label: "Web Analytics", path: "/web-analytics", requiresAnalytics: true },
+    { icon: Wallet, label: "Weekly Income", path: "/income", requiresAnalytics: true },
   ];
+
+  // Filter menu items based on user ID
+  const menuItems = allMenuItems.filter(item => {
+    if (item.requiresAnalytics) {
+      return isAdmin;
+    }
+    return true;
+  });
+
+  // Don't render sidebar content if still loading user
+  if (!currentUserId && isAuthenticated) {
+    return (
+      <div className="fixed left-0 top-0 h-full w-56 bg-[#1c3145] text-white p-4 shadow-lg flex items-center justify-center">
+        <Image
+          src="/GolLogo.png"
+          alt="GOL Logo"
+          width={120}
+          height={38}
+          className="object-contain"
+          priority
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="fixed left-0 top-0 h-full w-56 bg-[#1c3145] text-white p-2 shadow-lg flex flex-col">
@@ -100,7 +140,16 @@ const Sidebar = () => {
         />
       </div>
       
-      {/* Scrollable menu area - with only the scrollbar thumb visible on hover */}
+      {/* Admin indicator (optional) */}
+      {isAdmin && (
+        <div className="px-4 py-1 mb-2">
+          <span className="text-xs text-green-400 font-medium uppercase">
+            Admin
+          </span>
+        </div>
+      )}
+      
+      {/* Scrollable menu area */}
       <div className="flex-1 overflow-y-auto pb-2 
         [&::-webkit-scrollbar]:hidden hover:[&::-webkit-scrollbar]:block 
         [&::-webkit-scrollbar]:w-1.5
