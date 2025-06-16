@@ -7,7 +7,6 @@ import {
   Home,
   CheckSquare,
   CalendarRange,
-  Wallet,
   TrendingDown,
   BarChart2,
   ChartLine,
@@ -20,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
+
 // Admin UIDs that can see analytics
 const ADMIN_UIDS = [
   '5e7d4220-1d39-4622-9770-a6575d627c90',
@@ -35,55 +35,43 @@ interface MenuItem {
   label: string;
   path?: string;
   isHeader?: boolean;
-  requiresAnalytics?: boolean; // New property to control analytics access
+  requiresAnalytics?: boolean;
 }
 
 const Sidebar = () => {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
-  // Check authentication and get user ID
+  // Consolidated state
+  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState<{
+    isAuthenticated: boolean;
+    isAdmin: boolean;
+  }>({ isAuthenticated: false, isAdmin: false });
+
   useEffect(() => {
     async function checkAuth() {
       try {
         const { data, error } = await supabase.auth.getUser();
-        const isAuth = !!data?.user && !error;
-        setIsAuthenticated(isAuth);
-        setCurrentUserId(data?.user?.id || null);
+        if (error || !data.user) {
+          setSession({ isAuthenticated: false, isAdmin: false });
+          return;
+        }
+
+        const user = data.user;
+        const isAuthenticated = !!user;
+        const isAdmin = isAuthenticated && ADMIN_UIDS.includes(user.id);
+        
+        setSession({ isAuthenticated, isAdmin });
       } catch {
-        setIsAuthenticated(false);
-        setCurrentUserId(null);
+        setSession({ isAuthenticated: false, isAdmin: false });
+      } finally {
+        setLoading(false);
       }
     }
     checkAuth();
   }, [supabase]);
-
-  // Check if current user is admin
-  const isAdmin = currentUserId && ADMIN_UIDS.includes(currentUserId);
-
-  // If on the login page or not authenticated, show only the logo
-  if (pathname === "/login" || !isAuthenticated) {
-    return (
-      <div className="fixed left-0 top-0 h-full w-56 bg-[#1c3145] text-white p-4 shadow-lg flex items-center justify-center">
-        <Image
-          src="/GolLogo.png"
-          alt="GOL Logo"
-          width={120}
-          height={38}
-          className="object-contain"
-          priority
-        />
-      </div>
-    );
-  }
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
-  };
 
   const allMenuItems: MenuItem[] = [
     { icon: Home, label: "Projects", path: "/" },
@@ -100,32 +88,40 @@ const Sidebar = () => {
     { isHeader: true, label: "Analytics", requiresAnalytics: true },
     { icon: ChartLine, label: "Social Analytics", path: "/social-analytics", requiresAnalytics: true },
     { icon: BarChart2, label: "Web Analytics", path: "/web-analytics", requiresAnalytics: true },
-    { icon: Wallet, label: "Weekly Income", path: "/income", requiresAnalytics: true },
   ];
 
-  // Filter menu items based on user ID
   const menuItems = allMenuItems.filter(item => {
     if (item.requiresAnalytics) {
-      return isAdmin;
+      return session.isAdmin;
     }
     return true;
   });
+  
+  const renderLogo = () => (
+    <div className="fixed left-0 top-0 h-full w-56 bg-[#1c3145] text-white p-4 shadow-lg flex items-center justify-center">
+      <Image
+        src="/GolLogo.png"
+        alt="GOL Logo"
+        width={120}
+        height={38}
+        className="object-contain"
+        priority
+      />
+    </div>
+  );
 
-  // Don't render sidebar content if still loading user
-  if (!currentUserId && isAuthenticated) {
-    return (
-      <div className="fixed left-0 top-0 h-full w-56 bg-[#1c3145] text-white p-4 shadow-lg flex items-center justify-center">
-        <Image
-          src="/GolLogo.png"
-          alt="GOL Logo"
-          width={120}
-          height={38}
-          className="object-contain"
-          priority
-        />
-      </div>
-    );
+  if (loading) {
+    return renderLogo();
   }
+  
+  if (pathname === "/login" || !session.isAuthenticated) {
+    return renderLogo();
+  }
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
 
   return (
     <div className="fixed left-0 top-0 h-full w-56 bg-[#1c3145] text-white p-2 shadow-lg flex flex-col">
@@ -140,8 +136,7 @@ const Sidebar = () => {
         />
       </div>
       
-      {/* Admin indicator (optional) */}
-      {isAdmin && (
+      {session.isAdmin && (
         <div className="px-4 py-1 mb-2">
           <span className="text-xs text-green-400 font-medium uppercase">
             Admin
@@ -149,7 +144,6 @@ const Sidebar = () => {
         </div>
       )}
       
-      {/* Scrollable menu area */}
       <div className="flex-1 overflow-y-auto pb-2 
         [&::-webkit-scrollbar]:hidden hover:[&::-webkit-scrollbar]:block 
         [&::-webkit-scrollbar]:w-1.5
@@ -195,7 +189,6 @@ const Sidebar = () => {
         </div>
       </div>
 
-      {/* Sign Out Button - Placed at the bottom */}
       <button
         onClick={handleSignOut}
         className={cn(
