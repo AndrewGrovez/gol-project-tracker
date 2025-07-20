@@ -432,7 +432,6 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                     title: task.title,
                     description: task.description || undefined,
                     assignee: profiles.find(p => p.id === task.assigned_to)?.display_name,
-                    priority: task.priority as 'low' | 'medium' | 'high' | undefined,
                     dueDate: task.due_date ? formatDateDisplay(task.due_date) : undefined,
                   }))
                 },
@@ -444,7 +443,6 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                     title: task.title,
                     description: task.description || undefined,
                     assignee: profiles.find(p => p.id === task.assigned_to)?.display_name,
-                    priority: task.priority as 'low' | 'medium' | 'high' | undefined,
                     dueDate: task.due_date ? formatDateDisplay(task.due_date) : undefined,
                   }))
                 },
@@ -456,7 +454,6 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                     title: task.title,
                     description: task.description || undefined,
                     assignee: profiles.find(p => p.id === task.assigned_to)?.display_name,
-                    priority: task.priority as 'low' | 'medium' | 'high' | undefined,
                     dueDate: task.due_date ? formatDateDisplay(task.due_date) : undefined,
                   }))
                 }
