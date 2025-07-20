@@ -20,22 +20,12 @@ import {
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
 
-// Admin UIDs that can see analytics
-const ADMIN_UIDS = [
-  '5e7d4220-1d39-4622-9770-a6575d627c90',
-  'e394f160-e77a-4276-8b74-f7639530d116',
-  '300a3e45-48c7-4de4-8516-b737e18dcb23',
-  'b9af8044-830d-4aef-aa11-40927a22badd',
-  '9a6a4f60-0fcf-4afc-a57c-bdb5d91045db',
-  '0c218add-950b-45dc-8b58-75c92c7d53bc'
-];
 
 interface MenuItem {
   icon?: React.ElementType;
   label: string;
   path?: string;
   isHeader?: boolean;
-  requiresAnalytics?: boolean;
 }
 
 const Sidebar = () => {
@@ -45,32 +35,39 @@ const Sidebar = () => {
   
   // Consolidated state
   const [loading, setLoading] = useState(true);
-  const [session, setSession] = useState<{
-    isAuthenticated: boolean;
-    isAdmin: boolean;
-  }>({ isAuthenticated: false, isAdmin: false });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     async function checkAuth() {
       try {
         const { data, error } = await supabase.auth.getUser();
         if (error || !data.user) {
-          setSession({ isAuthenticated: false, isAdmin: false });
+          setIsAuthenticated(false);
           return;
         }
 
-        const user = data.user;
-        const isAuthenticated = !!user;
-        const isAdmin = isAuthenticated && ADMIN_UIDS.includes(user.id);
-        
-        setSession({ isAuthenticated, isAdmin });
+        setIsAuthenticated(true);
       } catch {
-        setSession({ isAuthenticated: false, isAdmin: false });
+        setIsAuthenticated(false);
       } finally {
         setLoading(false);
       }
     }
+    
     checkAuth();
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        setIsAuthenticated(true);
+        setLoading(false);
+      } else if (event === 'SIGNED_OUT') {
+        setIsAuthenticated(false);
+        setLoading(false);
+      }
+    });
+    
+    return () => subscription.unsubscribe();
   }, [supabase]);
 
   const allMenuItems: MenuItem[] = [
@@ -85,17 +82,12 @@ const Sidebar = () => {
     { isHeader: true, label: "Bookings" },
     { icon: Users, label: "BB Analysis", path: "/block-bookers" },
     { icon: Calendar, label: "Bookings Analysis", path: "/bookings-analysis" },
-    { isHeader: true, label: "Analytics", requiresAnalytics: true },
-    { icon: ChartLine, label: "Social Analytics", path: "/social-analytics", requiresAnalytics: true },
-    { icon: BarChart2, label: "Web Analytics", path: "/web-analytics", requiresAnalytics: true },
+    { isHeader: true, label: "Analytics" },
+    { icon: ChartLine, label: "Social Analytics", path: "/social-analytics" },
+    { icon: BarChart2, label: "Web Analytics", path: "/web-analytics" },
   ];
 
-  const menuItems = allMenuItems.filter(item => {
-    if (item.requiresAnalytics) {
-      return session.isAdmin;
-    }
-    return true;
-  });
+  const menuItems = allMenuItems;
   
   const renderLogo = () => (
     <div className="fixed left-0 top-0 h-full w-56 bg-[#1c3145] text-white p-4 shadow-lg flex items-center justify-center">
@@ -114,7 +106,7 @@ const Sidebar = () => {
     return renderLogo();
   }
   
-  if (pathname === "/login" || !session.isAuthenticated) {
+  if (pathname === "/login" || !isAuthenticated) {
     return renderLogo();
   }
 
@@ -136,13 +128,6 @@ const Sidebar = () => {
         />
       </div>
       
-      {session.isAdmin && (
-        <div className="px-4 py-1 mb-2">
-          <span className="text-xs text-green-400 font-medium uppercase">
-            Admin
-          </span>
-        </div>
-      )}
       
       <div className="flex-1 overflow-y-auto pb-2 
         [&::-webkit-scrollbar]:hidden hover:[&::-webkit-scrollbar]:block 
