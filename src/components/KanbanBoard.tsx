@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface Task {
   id: string;
@@ -26,8 +26,7 @@ interface KanbanBoardProps {
 
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ 
   initialData, 
-  onTaskMove, 
-  onTaskUpdate 
+  onTaskMove 
 }) => {
   const defaultData: KanbanColumn[] = [
     {
