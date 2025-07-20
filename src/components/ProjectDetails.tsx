@@ -10,6 +10,8 @@ import {
   Trash2,
   ChevronDown,
   ChevronRight,
+  List,
+  Columns,
 } from "lucide-react";
 import NewTaskDialog from "./NewTaskDialog";
 import EditTaskDialog from "./EditTaskDialog";
@@ -20,6 +22,7 @@ import { Button } from "./ui/button";
 import EditKPIDialog from "./EditKPIDialog";
 import { createClient } from "@/utils/supabase/client";
 import ProjectComments from "./ProjectComments";
+import KanbanBoard from "./KanbanBoard";
 
 interface ProjectDetailsProps {
   id: string;
@@ -32,6 +35,7 @@ type KpiSortColumn = "title" | "measure_date";
 
 /**
  * Helper function to format a date string.
+ * - If the date is in the past: returns "dd/mm/yy" format
  * - If the date is today: returns "Today"
  * - If the date is tomorrow: returns "Tomorrow"
  * - If within the next 7 days: returns the weekday (e.g., "Monday")
@@ -51,6 +55,15 @@ function formatDateDisplay(dateString: string): string {
     (target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
   );
 
+  // If date is in the past, show DD/MM/YY format
+  if (diffDays < 0) {
+    return target.toLocaleDateString("en-GB", { 
+      day: "2-digit", 
+      month: "2-digit", 
+      year: "2-digit" 
+    });
+  }
+  
   if (diffDays === 0) return "Today";
   if (diffDays === 1) return "Tomorrow";
   if (diffDays < 7) {
@@ -73,6 +86,9 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
   // Collapsible states for tasks sections
   const [todoOpen, setTodoOpen] = useState(true);
   const [completedOpen, setCompletedOpen] = useState(false);
+  
+  // View toggle state (list or kanban)
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban');
 
   // Sorting state for tasks
   const [taskSortConfig, setTaskSortConfig] = useState<{
@@ -365,7 +381,99 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
 
         <hr className="mb-8 border-gray-300" />
 
-        {/* To do tasks section */}
+        {/* View Toggle */}
+        <section className="mb-6">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-700">View:</span>
+            <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+                  viewMode === 'list'
+                    ? 'bg-[#1c3145] text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <List className="w-4 h-4" />
+                List
+              </button>
+              <button
+                onClick={() => setViewMode('kanban')}
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+                  viewMode === 'kanban'
+                    ? 'bg-[#1c3145] text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <Columns className="w-4 h-4" />
+                Kanban
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Tasks Section */}
+        {viewMode === 'kanban' ? (
+          <section className="mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Tasks</h2>
+              <NewTaskDialog
+                projectId={project.id}
+                onTaskCreated={(newTask: Task) => setTasks((prevTasks) => [newTask, ...prevTasks])}
+              />
+            </div>
+            <KanbanBoard 
+              initialData={[
+                {
+                  id: 'todo',
+                  title: 'To Do',
+                  tasks: tasks.filter(task => task.status === 'todo').map(task => ({
+                    id: task.id,
+                    title: task.title,
+                    description: task.description || undefined,
+                    assignee: profiles.find(p => p.id === task.assigned_to)?.display_name,
+                    priority: task.priority as 'low' | 'medium' | 'high' | undefined,
+                    dueDate: task.due_date ? formatDateDisplay(task.due_date) : undefined,
+                  }))
+                },
+                {
+                  id: 'inprogress',
+                  title: 'In Progress',
+                  tasks: tasks.filter(task => task.status === 'in_progress').map(task => ({
+                    id: task.id,
+                    title: task.title,
+                    description: task.description || undefined,
+                    assignee: profiles.find(p => p.id === task.assigned_to)?.display_name,
+                    priority: task.priority as 'low' | 'medium' | 'high' | undefined,
+                    dueDate: task.due_date ? formatDateDisplay(task.due_date) : undefined,
+                  }))
+                },
+                {
+                  id: 'completed',
+                  title: 'Completed',
+                  tasks: tasks.filter(task => task.status === 'completed').map(task => ({
+                    id: task.id,
+                    title: task.title,
+                    description: task.description || undefined,
+                    assignee: profiles.find(p => p.id === task.assigned_to)?.display_name,
+                    priority: task.priority as 'low' | 'medium' | 'high' | undefined,
+                    dueDate: task.due_date ? formatDateDisplay(task.due_date) : undefined,
+                  }))
+                }
+              ]}
+              onTaskMove={(taskId: string, fromColumn: string, toColumn: string) => {
+                const statusMap: Record<string, Task['status']> = {
+                  'todo': 'todo',
+                  'inprogress': 'in_progress',
+                  'completed': 'completed'
+                };
+                updateTaskStatus(taskId, statusMap[toColumn]);
+              }}
+            />
+          </section>
+        ) : (
+          <>
+            {/* To do tasks section */}
         <section className="mb-8">
           <div className="flex justify-between items-center mb-4">
             <div
@@ -608,6 +716,8 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
               </div>
             ))}
         </section>
+          </>
+        )}
 
         <hr className="mb-8 border-gray-300" />
 
