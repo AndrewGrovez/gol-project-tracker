@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import EditTaskDialog from './EditTaskDialog';
+import type { Task as DatabaseTask } from '@/types/database.types';
 
 interface Task {
   id: string;
@@ -21,12 +23,15 @@ interface KanbanColumn {
 interface KanbanBoardProps {
   initialData?: KanbanColumn[];
   onTaskMove?: (taskId: string, fromColumn: string, toColumn: string) => void;
-  onTaskUpdate?: (task: Task) => void;
+  onTaskUpdate?: (task: DatabaseTask) => void;
+  tasks?: DatabaseTask[];
 }
 
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ 
   initialData, 
-  onTaskMove 
+  onTaskMove,
+  onTaskUpdate,
+  tasks = [] 
 }) => {
   const defaultData: KanbanColumn[] = [
     {
@@ -160,53 +165,64 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             
             <div className="flex-1 p-4 space-y-3 overflow-y-auto">
               {column.tasks.map((task) => (
-                <Card
-                  key={task.id}
-                  className="cursor-move hover:shadow-md transition-shadow duration-200 border-2"
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, task, column.id)}
-                  style={{ borderColor: '#e2e8f0' }}
-                >
-                  <CardContent className="p-3">
-                    <div className="space-y-2">
-                      <h4 
-                        className="font-medium text-sm leading-tight"
-                        style={{ color: '#1c3145' }}
-                      >
-                        {task.title}
-                      </h4>
-                      
-                      {task.description && (
-                        <p className="text-xs text-gray-600 leading-relaxed">
-                          {task.description}
-                        </p>
-                      )}
-                      
-                      <div className="flex items-center justify-between pt-2">
-                        {task.assignee && (
-                          <span 
-                            className="text-xs font-medium px-2 py-1 rounded-full"
-                            style={{ backgroundColor: '#81bb26', color: 'white' }}
-                          >
-                            {task.assignee}
-                          </span>
+                <div key={task.id} className="relative group">
+                  <Card
+                    className="cursor-move hover:shadow-md transition-shadow duration-200 border-2"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, task, column.id)}
+                    style={{ borderColor: '#e2e8f0' }}
+                  >
+                    <CardContent className="p-3">
+                      <div className="space-y-2">
+                        <h4 
+                          className="font-medium text-sm leading-tight"
+                          style={{ color: '#1c3145' }}
+                        >
+                          {task.title}
+                        </h4>
+                        
+                        {task.description && (
+                          <p className="text-xs text-gray-600 leading-relaxed">
+                            {task.description}
+                          </p>
                         )}
                         
-                        {task.priority && (
-                          <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityColor(task.priority)}`}>
-                            {task.priority}
-                          </span>
+                        <div className="flex items-center justify-between pt-2">
+                          {task.assignee && (
+                            <span 
+                              className="text-xs font-medium px-2 py-1 rounded-full"
+                              style={{ backgroundColor: '#81bb26', color: 'white' }}
+                            >
+                              {task.assignee}
+                            </span>
+                          )}
+                          
+                          {task.priority && (
+                            <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityColor(task.priority)}`}>
+                              {task.priority}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {task.dueDate && (
+                          <div className="text-xs text-gray-500 pt-1">
+                            Due: {task.dueDate}
+                          </div>
                         )}
                       </div>
-                      
-                      {task.dueDate && (
-                        <div className="text-xs text-gray-500 pt-1">
-                          Due: {task.dueDate}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                  
+                  {/* Edit button overlay */}
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    {tasks.find(dbTask => dbTask.id === task.id) && onTaskUpdate && (
+                      <EditTaskDialog
+                        task={tasks.find(dbTask => dbTask.id === task.id)!}
+                        onTaskUpdated={onTaskUpdate}
+                      />
+                    )}
+                  </div>
+                </div>
               ))}
               
               {column.tasks.length === 0 && (

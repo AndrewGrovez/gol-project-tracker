@@ -458,6 +458,7 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                   }))
                 }
               ]}
+              tasks={tasks}
               onTaskMove={(taskId: string, fromColumn: string, toColumn: string) => {
                 const statusMap: Record<string, Task['status']> = {
                   'todo': 'todo',
@@ -465,6 +466,13 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                   'completed': 'completed'
                 };
                 updateTaskStatus(taskId, statusMap[toColumn]);
+              }}
+              onTaskUpdate={(updatedTask: Task) => {
+                setTasks((currentTasks) =>
+                  currentTasks.map((t) =>
+                    t.id === updatedTask.id ? updatedTask : t
+                  )
+                );
               }}
             />
           </section>
