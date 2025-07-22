@@ -61,6 +61,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   const [columns, setColumns] = useState<KanbanColumn[]>(initialData || defaultData);
   const [draggedTask, setDraggedTask] = useState<{ task: Task; fromColumn: string } | null>(null);
+  const [visibleTasksCount, setVisibleTasksCount] = useState<Record<string, number>>({});
 
   const handleDragStart = (e: React.DragEvent, task: Task, columnId: string) => {
     setDraggedTask({ task, fromColumn: columnId });
@@ -136,6 +137,18 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     }
   };
 
+  const getVisibleTasks = (column: KanbanColumn) => {
+    const visibleCount = visibleTasksCount[column.id] || 10;
+    return column.tasks.slice(0, visibleCount);
+  };
+
+  const handleSeeMore = (columnId: string) => {
+    setVisibleTasksCount(prev => ({
+      ...prev,
+      [columnId]: (prev[columnId] || 10) + 10
+    }));
+  };
+
   return (
     <div className="w-full h-full p-6" style={{ backgroundColor: '#f8fafc' }}>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full">
@@ -164,7 +177,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             </div>
             
             <div className="flex-1 p-4 space-y-3 overflow-y-auto">
-              {column.tasks.map((task) => (
+              {getVisibleTasks(column).map((task) => (
                 <div key={task.id} className="relative group">
                   <Card
                     className="cursor-move hover:shadow-md transition-shadow duration-200 border-2"
@@ -224,6 +237,18 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   </div>
                 </div>
               ))}
+              
+              {column.tasks.length > (visibleTasksCount[column.id] || 10) && (
+                <div className="text-center mt-4">
+                  <button
+                    onClick={() => handleSeeMore(column.id)}
+                    className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
+                    style={{ backgroundColor: '#81bb26' }}
+                  >
+                    See more ({column.tasks.length - (visibleTasksCount[column.id] || 10)} more)
+                  </button>
+                </div>
+              )}
               
               {column.tasks.length === 0 && (
                 <div className="text-center py-8 text-gray-400">
