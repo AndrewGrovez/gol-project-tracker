@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
 import Sidebar from "@/components/Sidebar";
 import RefreshHandler from "@/components/RefreshHandler";
+import MainContent from "@/components/MainContent";
+import { SidebarProvider } from "@/contexts/SidebarContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,12 +33,14 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <RefreshHandler />
         </Suspense>
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 pl-56">
-            {children}
-          </main>
-        </div>
+        <SidebarProvider>
+          <div className="flex min-h-screen">
+            <Sidebar />
+            <MainContent>
+              {children}
+            </MainContent>
+          </div>
+        </SidebarProvider>
       </body>
     </html>
   );

@@ -16,9 +16,12 @@ import {
   Users,
   Trophy,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
+import { useSidebar } from "@/contexts/SidebarContext";
 
 
 interface MenuItem {
@@ -32,6 +35,7 @@ const Sidebar = () => {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
+  const { isCollapsed, setIsCollapsed } = useSidebar();
   
   // Consolidated state
   const [loading, setLoading] = useState(true);
@@ -90,7 +94,10 @@ const Sidebar = () => {
   const menuItems = allMenuItems;
   
   const renderLogo = () => (
-    <div className="fixed left-0 top-0 h-full w-56 bg-[#1c3145] text-white p-4 shadow-lg flex items-center justify-center">
+    <div className={cn(
+      "fixed left-0 top-0 h-full bg-[#1c3145] text-white p-4 shadow-lg flex items-center justify-center",
+      isCollapsed ? "w-16" : "w-56"
+    )}>
       <Image
         src="/GolLogo.png"
         alt="GOL Logo"
@@ -116,16 +123,41 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="fixed left-0 top-0 h-full w-56 bg-[#1c3145] text-white p-2 shadow-lg flex flex-col">
-      <div className="py-2 mb-4 flex justify-center">
-        <Image
-          src="/GolLogo.png"
-          alt="GOL Logo"
-          width={120}
-          height={38}
-          className="object-contain"
-          priority
-        />
+    <div className={cn(
+      "fixed left-0 top-0 h-full bg-[#1c3145] text-white p-2 shadow-lg flex flex-col transition-all duration-300",
+      isCollapsed ? "w-16" : "w-56"
+    )}>
+      <div className={cn(
+        "py-2 mb-4 flex",
+        isCollapsed ? "justify-center" : "justify-center"
+      )}>
+        {!isCollapsed && (
+          <Image
+            src="/GolLogo.png"
+            alt="GOL Logo"
+            width={120}
+            height={38}
+            className="object-contain"
+            priority
+          />
+        )}
+      </div>
+      
+      <div className={cn(
+        "flex mb-4",
+        isCollapsed ? "justify-center" : "justify-end pr-2"
+      )}>
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="p-1 rounded-md hover:bg-[#81bb26]/20 transition-colors"
+          title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {isCollapsed ? (
+            <ChevronRight className="w-4 h-4" />
+          ) : (
+            <ChevronLeft className="w-4 h-4" />
+          )}
+        </button>
       </div>
       
       
@@ -143,6 +175,7 @@ const Sidebar = () => {
         <div className="space-y-1">
           {menuItems.map((item, index) => {
             if (item.isHeader) {
+              if (isCollapsed) return null;
               return (
                 <div key={`header-${index}`} className="px-4 py-2 mt-3 mb-1">
                   <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">
@@ -160,13 +193,15 @@ const Sidebar = () => {
                 <button
                   onClick={() => item.path && router.push(item.path)}
                   className={cn(
-                    "w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors",
+                    "w-full flex items-center rounded-lg transition-colors",
                     "hover:bg-[#81bb26]/20",
-                    isActive ? "bg-[#81bb26]/30" : "transparent"
+                    isActive ? "bg-[#81bb26]/30" : "transparent",
+                    isCollapsed ? "justify-center p-2" : "gap-2 px-4 py-2"
                   )}
+                  title={isCollapsed ? item.label : undefined}
                 >
                   {Icon && <Icon className="w-5 h-5" />}
-                  <span className="font-medium text-sm">{item.label}</span>
+                  {!isCollapsed && <span className="font-medium text-sm">{item.label}</span>}
                 </button>
               </div>
             );
@@ -177,12 +212,14 @@ const Sidebar = () => {
       <button
         onClick={handleSignOut}
         className={cn(
-          "w-full flex items-center gap-2 px-4 py-2 rounded-lg transition-colors mt-2",
-          "transparent"
+          "w-full flex items-center rounded-lg transition-colors mt-2",
+          "transparent",
+          isCollapsed ? "justify-center p-2" : "gap-2 px-4 py-2"
         )}
+        title={isCollapsed ? "Sign Out" : undefined}
       >
         <LogOut className="w-5 h-5" />
-        <span className="font-medium">Sign Out</span>
+        {!isCollapsed && <span className="font-medium">Sign Out</span>}
       </button>
     </div>
   );
