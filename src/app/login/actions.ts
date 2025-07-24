@@ -36,7 +36,7 @@ export async function login(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/')
+  redirect('/?refresh=true')
 }
 
 export async function signup(formData: FormData) {
