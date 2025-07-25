@@ -102,14 +102,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     setDraggedTask(null);
   };
 
-  const getPriorityColor = (priority?: string) => {
-    switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800 border-red-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'low': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
 
   const getColumnStyle = (columnId: string) => {
     switch (columnId) {
@@ -207,12 +199,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                               style={{ backgroundColor: '#81bb26', color: 'white' }}
                             >
                               {task.assignee}
-                            </span>
-                          )}
-                          
-                          {task.priority && (
-                            <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityColor(task.priority)}`}>
-                              {task.priority}
                             </span>
                           )}
                         </div>

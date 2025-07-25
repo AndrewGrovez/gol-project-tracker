@@ -10,11 +10,14 @@ import {
   Trash2,
   ChevronDown,
   ChevronRight,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
 import EditTaskDialog from "@/components/EditTaskDialog";
+import KanbanBoard from "@/components/KanbanBoard";
 
 type TaskSortColumn = "title" | "project" | "status" | "due_date";
 
@@ -24,6 +27,7 @@ export default function MyTasks() {
   const [error, setError] = useState<string | null>(null);
   const [todoOpen, setTodoOpen] = useState(true);
   const [completedOpen, setCompletedOpen] = useState(false); // Changed to false to collapse by default
+  const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
 
   // Updated default sort config to due_date
   const [taskSortConfig, setTaskSortConfig] = useState<{
@@ -110,6 +114,65 @@ export default function MyTasks() {
       console.error("Error deleting task:", error);
     }
   };
+
+  // Handle task move in kanban
+  const handleTaskMove = async (taskId: string, fromColumn: string, toColumn: string) => {
+    const statusMap: Record<string, Task["status"]> = {
+      'todo': 'todo',
+      'inprogress': 'in_progress',
+      'completed': 'completed'
+    };
+    
+    const newStatus = statusMap[toColumn];
+    if (newStatus) {
+      await updateTaskStatus(taskId, newStatus);
+    }
+  };
+
+  // Prepare kanban data
+  const kanbanData = useMemo(() => {
+    const todoTasks = tasks.filter(task => task.status === 'todo').map(task => ({
+      id: task.id,
+      title: task.title,
+      description: task.description || '',
+      assignee: task.project.name,
+      dueDate: task.due_date ? new Date(task.due_date).toLocaleDateString() : undefined
+    }));
+
+    const inProgressTasks = tasks.filter(task => task.status === 'in_progress').map(task => ({
+      id: task.id,
+      title: task.title,
+      description: task.description || '',
+      assignee: task.project.name,
+      dueDate: task.due_date ? new Date(task.due_date).toLocaleDateString() : undefined
+    }));
+
+    const completedTasks = tasks.filter(task => task.status === 'completed').map(task => ({
+      id: task.id,
+      title: task.title,
+      description: task.description || '',
+      assignee: task.project.name,
+      dueDate: task.due_date ? new Date(task.due_date).toLocaleDateString() : undefined
+    }));
+
+    return [
+      {
+        id: 'todo',
+        title: 'To Do',
+        tasks: todoTasks
+      },
+      {
+        id: 'inprogress',
+        title: 'In Progress',
+        tasks: inProgressTasks
+      },
+      {
+        id: 'completed',
+        title: 'Completed',
+        tasks: completedTasks
+      }
+    ];
+  }, [tasks]);
 
   // Helper to render status icon
   const getTaskStatusIcon = (status: Task["status"]) => {
@@ -204,9 +267,46 @@ export default function MyTasks() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold mb-8">My Tasks</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold">My Tasks</h1>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={viewMode === "table" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("table")}
+            className="flex items-center gap-2"
+          >
+            <List className="w-4 h-4" />
+            Table
+          </Button>
+          <Button
+            variant={viewMode === "kanban" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("kanban")}
+            className="flex items-center gap-2"
+          >
+            <LayoutGrid className="w-4 h-4" />
+            Kanban
+          </Button>
+        </div>
+      </div>
 
-      {/* To do tasks section */}
+      {viewMode === "kanban" ? (
+        <KanbanBoard
+          initialData={kanbanData}
+          onTaskMove={handleTaskMove}
+          onTaskUpdate={(updatedTask) => {
+            setTasks((currentTasks) =>
+              currentTasks.map((t) =>
+                t.id === updatedTask.id ? {...t, ...updatedTask} : t
+              )
+            );
+          }}
+          tasks={tasks}
+        />
+      ) : (
+        <>
+          {/* To do tasks section */}
       <section className="mb-8">
         <div
           className="flex items-center gap-2 cursor-pointer mb-4"
@@ -427,6 +527,8 @@ export default function MyTasks() {
             </div>
           ))}
       </section>
+        </>
+      )}
     </div>
   );
 }
