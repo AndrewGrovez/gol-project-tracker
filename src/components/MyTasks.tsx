@@ -27,7 +27,7 @@ export default function MyTasks() {
   const [error, setError] = useState<string | null>(null);
   const [todoOpen, setTodoOpen] = useState(true);
   const [completedOpen, setCompletedOpen] = useState(false); // Changed to false to collapse by default
-  const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
+  const [viewMode, setViewMode] = useState<"table" | "kanban">("kanban");
 
   // Updated default sort config to due_date
   const [taskSortConfig, setTaskSortConfig] = useState<{
