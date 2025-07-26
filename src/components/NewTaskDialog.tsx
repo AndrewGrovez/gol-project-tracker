@@ -96,6 +96,25 @@ export default function NewTaskDialog({ projectId, onTaskCreated }: NewTaskDialo
 
       if (data) {
         onTaskCreated(data);
+        
+        // Send notification if task is assigned to someone
+        if (assignedTo) {
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            await fetch('/api/notifications/task-assignment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                taskId: data.id,
+                assignedToUserId: assignedTo,
+                assignedByUserId: user?.id
+              })
+            });
+          } catch (notificationError) {
+            console.error("Error sending notification:", notificationError);
+          }
+        }
+        
         setTitle("");
         setDescription("");
         setDueDate(null);

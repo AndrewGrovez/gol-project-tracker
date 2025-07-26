@@ -106,6 +106,25 @@ export default function EditTaskDialog({ task, onTaskUpdated }: EditTaskDialogPr
 
       if (data) {
         onTaskUpdated(data);
+        
+        // Send notification if assignment changed to a new person
+        if (assignedTo && assignedTo !== task.assigned_to) {
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            await fetch('/api/notifications/task-assignment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                taskId: data.id,
+                assignedToUserId: assignedTo,
+                assignedByUserId: user?.id
+              })
+            });
+          } catch (notificationError) {
+            console.error("Error sending notification:", notificationError);
+          }
+        }
+        
         setOpen(false);
       }
     } catch (error) {
