@@ -15,10 +15,15 @@ export class EmailNotificationService {
   }
 
   private createAuthClient(impersonateEmail: string) {
+    const privateKey = Buffer.from(
+      process.env.GOOGLE_PRIVATE_KEY_B64!,
+      "base64"
+    ).toString();
+
     const jwt = new google.auth.JWT(
       process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       undefined,
-      process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      privateKey,
       ['https://www.googleapis.com/auth/gmail.send'],
       impersonateEmail // This impersonates the user
     );

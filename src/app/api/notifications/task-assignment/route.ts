@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     // Check required environment variables first
     const requiredEnvVars = [
       'GOOGLE_SERVICE_ACCOUNT_EMAIL',
-      'GOOGLE_PRIVATE_KEY',
+      'GOOGLE_PRIVATE_KEY_B64',
       'SUPABASE_SERVICE_ROLE_KEY',
       'NEXT_PUBLIC_SUPABASE_URL'
     ];
