@@ -14,6 +14,28 @@ interface TaskWithProject {
 
 export async function POST(request: Request) {
   try {
+    // Check required environment variables first
+    const requiredEnvVars = [
+      'GOOGLE_SERVICE_ACCOUNT_EMAIL',
+      'GOOGLE_PRIVATE_KEY',
+      'SUPABASE_SERVICE_ROLE_KEY',
+      'NEXT_PUBLIC_SUPABASE_URL'
+    ];
+    
+    const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+    if (missingEnvVars.length > 0) {
+      console.error('❌ Missing environment variables:', missingEnvVars);
+      return NextResponse.json(
+        { 
+          error: "Server configuration error",
+          details: process.env.NODE_ENV === 'development' 
+            ? `Missing env vars: ${missingEnvVars.join(', ')}` 
+            : undefined
+        },
+        { status: 500 }
+      );
+    }
+
     const { taskId, assignedToUserId, assignedByUserId } = await request.json();
     console.log('📧 Notification request:', { taskId, assignedToUserId, assignedByUserId });
 
@@ -126,8 +148,18 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Notification API error:', error);
+    
+    // Provide more detailed error information for debugging
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    console.error('Error details:', { message: errorMessage, stack: errorStack });
+    
     return NextResponse.json(
-      { error: "Internal server error" },
+      { 
+        error: "Internal server error",
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      },
       { status: 500 }
     );
   }

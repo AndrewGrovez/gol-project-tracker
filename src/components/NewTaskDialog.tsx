@@ -99,9 +99,12 @@ export default function NewTaskDialog({ projectId, onTaskCreated }: NewTaskDialo
         
         // Send notification if task is assigned to someone
         if (assignedTo) {
+          console.log('📧 Attempting to send notification for assignment:', { taskId: data.id, assignedTo });
           try {
             const { data: { user } } = await supabase.auth.getUser();
-            await fetch('/api/notifications/task-assignment', {
+            console.log('👤 Current user for notification:', user?.id);
+            
+            const response = await fetch('/api/notifications/task-assignment', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -110,9 +113,20 @@ export default function NewTaskDialog({ projectId, onTaskCreated }: NewTaskDialo
                 assignedByUserId: user?.id
               })
             });
+            
+            const result = await response.json();
+            console.log('📧 Notification response:', { status: response.status, result });
+            
+            if (!response.ok) {
+              console.error('❌ Notification failed:', result);
+            } else {
+              console.log('✅ Notification sent successfully:', result);
+            }
           } catch (notificationError) {
-            console.error("Error sending notification:", notificationError);
+            console.error("❌ Error sending notification:", notificationError);
           }
+        } else {
+          console.log('ℹ️ No assignment made, skipping notification');
         }
         
         setTitle("");

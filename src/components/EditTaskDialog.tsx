@@ -109,9 +109,16 @@ export default function EditTaskDialog({ task, onTaskUpdated }: EditTaskDialogPr
         
         // Send notification if assignment changed to a new person
         if (assignedTo && assignedTo !== task.assigned_to) {
+          console.log('📧 Assignment changed, sending notification:', { 
+            taskId: data.id, 
+            oldAssignment: task.assigned_to, 
+            newAssignment: assignedTo 
+          });
           try {
             const { data: { user } } = await supabase.auth.getUser();
-            await fetch('/api/notifications/task-assignment', {
+            console.log('👤 Current user for notification:', user?.id);
+            
+            const response = await fetch('/api/notifications/task-assignment', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -120,9 +127,23 @@ export default function EditTaskDialog({ task, onTaskUpdated }: EditTaskDialogPr
                 assignedByUserId: user?.id
               })
             });
+            
+            const result = await response.json();
+            console.log('📧 Notification response:', { status: response.status, result });
+            
+            if (!response.ok) {
+              console.error('❌ Notification failed:', result);
+            } else {
+              console.log('✅ Notification sent successfully:', result);
+            }
           } catch (notificationError) {
-            console.error("Error sending notification:", notificationError);
+            console.error("❌ Error sending notification:", notificationError);
           }
+        } else {
+          console.log('ℹ️ No assignment change, skipping notification:', { 
+            assignedTo, 
+            previousAssignment: task.assigned_to 
+          });
         }
         
         setOpen(false);
