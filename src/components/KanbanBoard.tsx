@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import EditTaskDialog from './EditTaskDialog';
 import type { Task as DatabaseTask } from '@/types/database.types';
@@ -62,6 +62,13 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [columns, setColumns] = useState<KanbanColumn[]>(initialData || defaultData);
   const [draggedTask, setDraggedTask] = useState<{ task: Task; fromColumn: string } | null>(null);
   const [visibleTasksCount, setVisibleTasksCount] = useState<Record<string, number>>({});
+
+  // Sync internal columns when parent-provided data changes (e.g., new tasks)
+  useEffect(() => {
+    if (initialData) {
+      setColumns(initialData);
+    }
+  }, [initialData]);
 
   const handleDragStart = (e: React.DragEvent, task: Task, columnId: string) => {
     setDraggedTask({ task, fromColumn: columnId });
