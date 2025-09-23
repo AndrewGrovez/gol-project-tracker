@@ -18,8 +18,10 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
 import EditTaskDialog from "@/components/EditTaskDialog";
 import KanbanBoard from "@/components/KanbanBoard";
+import { Input } from "@/components/ui/input";
 
 type TaskSortColumn = "title" | "project" | "status" | "due_date";
+type TaskStatusFilter = "all" | "todo" | "in_progress" | "completed" | "blocked";
 
 export default function MyTasks() {
   const [tasks, setTasks] = useState<(Task & { project: Project })[]>([]);
@@ -28,6 +30,9 @@ export default function MyTasks() {
   const [todoOpen, setTodoOpen] = useState(true);
   const [completedOpen, setCompletedOpen] = useState(false); // Changed to false to collapse by default
   const [viewMode, setViewMode] = useState<"table" | "kanban">("kanban");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<TaskStatusFilter>("all");
+  const [projectFilter, setProjectFilter] = useState<string>("all");
 
   // Updated default sort config to due_date
   const [taskSortConfig, setTaskSortConfig] = useState<{
@@ -36,6 +41,16 @@ export default function MyTasks() {
   }>({ column: "due_date", direction: "asc" });
 
   const supabase = createClient();
+
+  const projectOptions = useMemo(() => {
+    const entries = new Map<string, string>();
+    tasks.forEach((task) => {
+      if (task.project) {
+        entries.set(task.project.id, task.project.name);
+      }
+    });
+    return Array.from(entries.entries());
+  }, [tasks]);
 
   useEffect(() => {
     async function fetchMyTasks() {
@@ -130,8 +145,28 @@ export default function MyTasks() {
   };
 
   // Prepare kanban data
+  const filteredTasks = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+
+    return tasks.filter((task) => {
+      const matchesSearch = term.length === 0
+        ? true
+        : [task.title, task.description ?? "", task.project?.name ?? ""].some((value) =>
+            value.toLowerCase().includes(term)
+          );
+
+      const matchesStatus =
+        statusFilter === "all" ? true : task.status === statusFilter;
+
+      const matchesProject =
+        projectFilter === "all" ? true : task.project?.id === projectFilter;
+
+      return matchesSearch && matchesStatus && matchesProject;
+    });
+  }, [tasks, searchTerm, statusFilter, projectFilter]);
+
   const kanbanData = useMemo(() => {
-    const todoTasks = tasks.filter(task => task.status === 'todo').map(task => ({
+    const todoTasks = filteredTasks.filter(task => task.status === 'todo').map(task => ({
       id: task.id,
       title: task.title,
       description: task.description || '',
@@ -139,7 +174,7 @@ export default function MyTasks() {
       dueDate: task.due_date ? new Date(task.due_date).toLocaleDateString() : undefined
     }));
 
-    const inProgressTasks = tasks.filter(task => task.status === 'in_progress').map(task => ({
+    const inProgressTasks = filteredTasks.filter(task => task.status === 'in_progress').map(task => ({
       id: task.id,
       title: task.title,
       description: task.description || '',
@@ -147,7 +182,7 @@ export default function MyTasks() {
       dueDate: task.due_date ? new Date(task.due_date).toLocaleDateString() : undefined
     }));
 
-    const completedTasks = tasks.filter(task => task.status === 'completed').map(task => ({
+    const completedTasks = filteredTasks.filter(task => task.status === 'completed').map(task => ({
       id: task.id,
       title: task.title,
       description: task.description || '',
@@ -172,7 +207,7 @@ export default function MyTasks() {
         tasks: completedTasks
       }
     ];
-  }, [tasks]);
+  }, [filteredTasks]);
 
   // Helper to render status icon
   const getTaskStatusIcon = (status: Task["status"]) => {
@@ -192,7 +227,7 @@ export default function MyTasks() {
 
   // Sorting logic: sort tasks based on the current sort configuration
   const sortedTasks = useMemo(() => {
-    const sorted = [...tasks];
+    const sorted = [...filteredTasks];
     const { column, direction } = taskSortConfig;
     sorted.sort((a, b) => {
       if (column === "title") {
@@ -218,7 +253,7 @@ export default function MyTasks() {
       sorted.reverse();
     }
     return sorted;
-  }, [tasks, taskSortConfig]);
+  }, [filteredTasks, taskSortConfig]);
 
   // Filter tasks into To do and Completed sections after sorting
   const todoTasks = sortedTasks.filter((task) => task.status !== "completed");
@@ -267,43 +302,83 @@ export default function MyTasks() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold">My Tasks</h1>
-        <div className="flex items-center gap-2">
-          <Button
-            variant={viewMode === "table" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("table")}
-            className="flex items-center gap-2"
+      <div className="flex flex-col gap-6 mb-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-2xl font-bold">My Tasks</h1>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={viewMode === "table" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("table")}
+              className="flex items-center gap-2"
+            >
+              <List className="w-4 h-4" />
+              Table
+            </Button>
+            <Button
+              variant={viewMode === "kanban" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode("kanban")}
+              className="flex items-center gap-2"
+            >
+              <LayoutGrid className="w-4 h-4" />
+              Kanban
+            </Button>
+          </div>
+        </div>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <Input
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search tasks"
+            aria-label="Search tasks"
+            className="w-full md:w-72"
+          />
+          <Select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as TaskStatusFilter)}
+            className="w-full md:w-44"
+            aria-label="Filter tasks by status"
           >
-            <List className="w-4 h-4" />
-            Table
-          </Button>
-          <Button
-            variant={viewMode === "kanban" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("kanban")}
-            className="flex items-center gap-2"
+            <option value="all">All statuses</option>
+            <option value="todo">To Do</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="blocked">Blocked</option>
+          </Select>
+          <Select
+            value={projectFilter}
+            onChange={(event) => setProjectFilter(event.target.value)}
+            className="w-full md:w-48"
+            aria-label="Filter tasks by project"
           >
-            <LayoutGrid className="w-4 h-4" />
-            Kanban
-          </Button>
+            <option value="all">All projects</option>
+            {projectOptions.map(([id, name]) => (
+              <option key={id} value={id}>
+                {name}
+              </option>
+            ))}
+          </Select>
         </div>
       </div>
 
       {viewMode === "kanban" ? (
-        <KanbanBoard
-          initialData={kanbanData}
-          onTaskMove={handleTaskMove}
-          onTaskUpdate={(updatedTask) => {
-            setTasks((currentTasks) =>
-              currentTasks.map((t) =>
-                t.id === updatedTask.id ? {...t, ...updatedTask} : t
-              )
-            );
-          }}
-          tasks={tasks}
-        />
+        filteredTasks.length === 0 ? (
+          <p className="text-gray-500">No tasks match your filters.</p>
+        ) : (
+          <KanbanBoard
+            initialData={kanbanData}
+            onTaskMove={handleTaskMove}
+            onTaskUpdate={(updatedTask) => {
+              setTasks((currentTasks) =>
+                currentTasks.map((t) =>
+                  t.id === updatedTask.id ? {...t, ...updatedTask} : t
+                )
+              );
+            }}
+            tasks={filteredTasks}
+          />
+        )
       ) : (
         <>
           {/* To do tasks section */}
@@ -321,7 +396,7 @@ export default function MyTasks() {
         </div>
         {todoOpen &&
           (todoTasks.length === 0 ? (
-            <p className="text-gray-500">No tasks assigned to you</p>
+            <p className="text-gray-500">No tasks match your filters.</p>
           ) : (
             <div className="border border-[#1c3145]/40 rounded-lg overflow-hidden shadow">
               <table className="w-full">
@@ -434,7 +509,7 @@ export default function MyTasks() {
         </div>
         {completedOpen &&
           (completedTasks.length === 0 ? (
-            <p className="text-gray-500">No completed tasks</p>
+            <p className="text-gray-500">No tasks match your filters.</p>
           ) : (
             <div className="border border-[#1c3145]/40 rounded-lg overflow-hidden shadow">
               <table className="w-full">

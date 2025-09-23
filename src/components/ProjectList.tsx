@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, Trash2, ChevronDown, ChevronRight } from "lucide-react";
@@ -10,6 +10,10 @@ import { Button } from "@/components/ui/button";
 import NewProjectDialog from "@/components/NewProjectDialog";
 import EditProjectDialog from "@/components/EditProjectDialog";
 import { createClient } from "@/utils/supabase/client";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+
+type ProjectStatusFilter = "all" | "active" | "completed";
 
 export default function ProjectList() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -18,6 +22,8 @@ export default function ProjectList() {
   const router = useRouter();
   const [activeOpen, setActiveOpen] = useState(true);
   const [completedOpen, setCompletedOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter>("all");
   const supabase = createClient();
   const [displayName, setDisplayName] = useState<string>("");
   const [currentUserId, setCurrentUserId] = useState<string>("");
@@ -119,8 +125,31 @@ export default function ProjectList() {
     }
   };
 
-  const activeProjects = projects.filter((project) => !project.completed);
-  const completedProjects = projects.filter((project) => project.completed);
+  const filteredProjects = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+
+    return projects.filter((project) => {
+      const matchesSearch = term.length === 0
+        ? true
+        : [project.name, project.description ?? ""].some((value) =>
+            value.toLowerCase().includes(term)
+          );
+
+      const matchesStatus =
+        statusFilter === "all"
+          ? true
+          : statusFilter === "active"
+            ? !project.completed
+            : project.completed;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [projects, searchTerm, statusFilter]);
+
+  const activeProjects = filteredProjects.filter((project) => !project.completed);
+  const completedProjects = filteredProjects.filter((project) => project.completed);
+  const showActiveSection = statusFilter !== "completed";
+  const showCompletedSection = statusFilter !== "active";
 
   if (loading) {
     return (
@@ -179,91 +208,122 @@ export default function ProjectList() {
         )}
 
         {/* Header with NewProjectDialog */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
           <h2 className="text-3xl font-bold text-gray-900">Projects</h2>
-          <NewProjectDialog
-            onProjectCreated={(newProject: Project) =>
-              setProjects((prevProjects) => [newProject, ...prevProjects])
-            }
-          />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Input
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search projects"
+              aria-label="Search projects"
+              className="w-full sm:w-64"
+            />
+            <Select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as ProjectStatusFilter)}
+              className="w-full sm:w-44"
+              aria-label="Filter projects by status"
+            >
+              <option value="all">All statuses</option>
+              <option value="active">Active</option>
+              <option value="completed">Completed</option>
+            </Select>
+            <NewProjectDialog
+              onProjectCreated={(newProject: Project) =>
+                setProjects((prevProjects) => [newProject, ...prevProjects])
+              }
+            />
+          </div>
         </div>
 
         <hr className="mb-6 border-gray-200" />
 
         {/* Active Projects Section */}
-        <section className="mb-6">
-          <div
-            className="flex items-center justify-between mb-6 cursor-pointer bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-all duration-300"
-            onClick={() => setActiveOpen(!activeOpen)}
-          >
-            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-              Active Projects
-              <span className="px-3 py-1 bg-[#1c3145]/10 text-[#1c3145] rounded-full text-sm font-medium">
-                {activeProjects.length}
-              </span>
-            </h2>
-            {activeOpen ? (
-              <ChevronDown className="w-6 h-6 text-gray-500" />
-            ) : (
-              <ChevronRight className="w-6 h-6 text-gray-500" />
-            )}
-          </div>
-          {activeOpen && (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {activeProjects.map((project) => (
-                <Card key={project.id} className="hover:shadow-lg transition-all duration-300 border-l-4 border-[#1c3145]">
-                  <CardContent className="p-6 flex flex-col h-full">
-                    {/* Project details */}
-                    <div
-                      className="cursor-pointer group"
-                      onClick={() => router.push(`/projects/${project.id}`)}
-                    >
-                      <h4 className="text-2xl font-semibold text-gray-900 group-hover:text-[#1c3145] transition-colors duration-300">
-                        {project.name}
-                      </h4>
-                      <p className="text-gray-700 mt-1">{project.description}</p>
-                    </div>
-                    <div className="mt-auto" />
-                    {/* Button group */}
-                    <div className="flex justify-end gap-3">
-                      <EditProjectDialog
-                        project={project}
-                        onProjectUpdated={(updatedProject: Project) =>
-                          setProjects((currentProjects) =>
-                            currentProjects.map((p) =>
-                              p.id === updatedProject.id ? updatedProject : p
-                            )
-                          )
-                        }
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 hover:bg-red-100 transition-colors duration-300 p-2"
-                        onClick={() => deleteProject(project.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-green-600 hover:bg-green-100 transition-colors duration-300 p-2"
-                        onClick={() => toggleProjectCompletion(project.id, project.completed)}
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+        {showActiveSection && (
+          <section className="mb-6">
+            <div
+              className="flex items-center justify-between mb-6 cursor-pointer bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-all duration-300"
+              onClick={() => setActiveOpen(!activeOpen)}
+            >
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+                Active Projects
+                <span className="px-3 py-1 bg-[#1c3145]/10 text-[#1c3145] rounded-full text-sm font-medium">
+                  {activeProjects.length}
+                </span>
+              </h2>
+              {activeOpen ? (
+                <ChevronDown className="w-6 h-6 text-gray-500" />
+              ) : (
+                <ChevronRight className="w-6 h-6 text-gray-500" />
+              )}
             </div>
-          )}
-        </section>
+            {activeOpen && (
+              <>
+                {activeProjects.length === 0 ? (
+                  <p className="text-gray-500">No active projects match your filters.</p>
+                ) : (
+                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {activeProjects.map((project) => (
+                      <Card key={project.id} className="hover:shadow-lg transition-all duration-300 border-l-4 border-[#1c3145]">
+                        <CardContent className="p-6 flex flex-col h-full">
+                          {/* Project details */}
+                          <div
+                            className="cursor-pointer group"
+                            onClick={() => router.push(`/projects/${project.id}`)}
+                          >
+                            <h4 className="text-2xl font-semibold text-gray-900 group-hover:text-[#1c3145] transition-colors duration-300">
+                              {project.name}
+                            </h4>
+                            <p className="text-gray-700 mt-1">{project.description}</p>
+                          </div>
+                          <div className="mt-auto" />
+                          {/* Button group */}
+                          <div className="flex justify-end gap-3">
+                            <EditProjectDialog
+                              project={project}
+                              onProjectUpdated={(updatedProject: Project) =>
+                                setProjects((currentProjects) =>
+                                  currentProjects.map((p) =>
+                                    p.id === updatedProject.id ? updatedProject : p
+                                  )
+                                )
+                              }
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 hover:bg-red-100 transition-colors duration-300 p-2"
+                              aria-label="Delete project"
+                              title="Delete project"
+                              onClick={() => deleteProject(project.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-green-600 hover:bg-green-100 transition-colors duration-300 p-2"
+                              aria-label="Toggle project completion"
+                              title="Toggle project completion"
+                              onClick={() => toggleProjectCompletion(project.id, project.completed)}
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+        )}
 
         <hr className="mb-8 border-gray-200" />
 
         {/* Completed Projects Section */}
-        {completedProjects.length > 0 && (
+        {showCompletedSection && (
           <section>
             <div
               className="flex items-center justify-between mb-6 cursor-pointer bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-all duration-300"
@@ -282,54 +342,68 @@ export default function ProjectList() {
               )}
             </div>
             {completedOpen && (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {completedProjects.map((project) => (
-                  <Card key={project.id} className="hover:shadow-lg transition-all duration-300 border-l-4 border-green-500 bg-gray-50">
-                    <CardContent className="p-6 flex flex-col h-full">
-                      <div
-                        className="cursor-pointer group"
-                        onClick={() => router.push(`/projects/${project.id}`)}
-                      >
-                        <h4 className="text-2xl font-semibold text-gray-700 group-hover:text-green-600 transition-colors duration-300">
-                          {project.name}
-                        </h4>
-                        <p className="text-gray-600 mt-1">{project.description}</p>
-                      </div>
-                      <div className="mt-auto" />
-                      <div className="flex justify-end gap-3">
-                        <EditProjectDialog
-                          project={project}
-                          onProjectUpdated={(updatedProject: Project) =>
-                            setProjects((currentProjects) =>
-                              currentProjects.map((p) =>
-                                p.id === updatedProject.id ? updatedProject : p
-                              )
-                            )
-                          }
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:bg-red-100 transition-colors duration-300 p-2"
-                          onClick={() => deleteProject(project.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-green-600 hover:bg-green-100 transition-colors duration-300 p-2"
-                          onClick={() => toggleProjectCompletion(project.id, project.completed)}
-                        >
-                          <CheckCircle className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <>
+                {completedProjects.length === 0 ? (
+                  <p className="text-gray-500">No completed projects match your filters.</p>
+                ) : (
+                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {completedProjects.map((project) => (
+                      <Card key={project.id} className="hover:shadow-lg transition-all duration-300 border-l-4 border-green-500 bg-gray-50">
+                        <CardContent className="p-6 flex flex-col h-full">
+                          <div
+                            className="cursor-pointer group"
+                            onClick={() => router.push(`/projects/${project.id}`)}
+                          >
+                            <h4 className="text-2xl font-semibold text-gray-700 group-hover:text-green-600 transition-colors duration-300">
+                              {project.name}
+                            </h4>
+                            <p className="text-gray-600 mt-1">{project.description}</p>
+                          </div>
+                          <div className="mt-auto" />
+                          <div className="flex justify-end gap-3">
+                            <EditProjectDialog
+                              project={project}
+                              onProjectUpdated={(updatedProject: Project) =>
+                                setProjects((currentProjects) =>
+                                  currentProjects.map((p) =>
+                                    p.id === updatedProject.id ? updatedProject : p
+                                  )
+                                )
+                              }
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 hover:bg-red-100 transition-colors duration-300 p-2"
+                              aria-label="Delete project"
+                              title="Delete project"
+                              onClick={() => deleteProject(project.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-green-600 hover:bg-green-100 transition-colors duration-300 p-2"
+                              aria-label="Toggle project completion"
+                              title="Toggle project completion"
+                              onClick={() => toggleProjectCompletion(project.id, project.completed)}
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </section>
+        )}
+
+        {filteredProjects.length === 0 && (
+          <p className="mt-6 text-center text-gray-500">No projects match your search or filters.</p>
         )}
       </div>
     </div>
