@@ -9,6 +9,14 @@ interface TaskAssignmentEmailData {
   dueDate?: string;
 }
 
+interface CommentMentionEmailData {
+  projectName: string;
+  commentText: string;
+  mentionedToEmail: string;
+  authorName: string;
+  projectUrl: string;
+}
+
 export class EmailNotificationService {
   constructor() {
     // Auth clients are created dynamically for each email send
@@ -61,6 +69,34 @@ export class EmailNotificationService {
       return true;
     } catch (error) {
       console.error('Failed to send task assignment email:', error);
+      return false;
+    }
+  }
+
+  async sendCommentMentionNotification(data: CommentMentionEmailData, senderEmail?: string): Promise<boolean> {
+    try {
+      const impersonateEmail = senderEmail || 'notifications@golcentres.co.uk';
+      const gmail = this.createAuthClient(impersonateEmail);
+
+      const subject = `You were mentioned in ${data.projectName}`;
+      const body = this.createCommentMentionEmailBody(data);
+
+      const message = this.createEmailMessage(
+        data.mentionedToEmail,
+        subject,
+        body
+      );
+
+      await gmail.users.messages.send({
+        userId: 'me',
+        requestBody: {
+          raw: message,
+        },
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Failed to send comment mention email:', error);
       return false;
     }
   }
@@ -160,6 +196,50 @@ export class EmailNotificationService {
     `.trim();
   }
 
+  private createCommentMentionEmailBody(data: CommentMentionEmailData): string {
+    const escapedComment = this.escapeHtml(data.commentText)
+      .replace(/\n/g, '<br />');
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Mention</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa;">
+    <div style="max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden;">
+        <div style="background: linear-gradient(135deg, #1c3145 0%, #162435 100%); padding: 24px 36px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 600;">You were mentioned</h1>
+            <p style="color: #cbd5f5; margin: 8px 0 0; font-size: 15px;">${this.escapeHtml(data.projectName)}</p>
+        </div>
+        <div style="padding: 32px 36px;">
+            <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
+              <strong style="color: #1c3145;">${this.escapeHtml(data.authorName)}</strong> mentioned you in a comment.
+            </p>
+            <div style="background-color: #f3f4f6; border-radius: 8px; border-left: 4px solid #81bb26; padding: 20px 24px; margin-bottom: 32px;">
+              <p style="color: #111827; font-size: 15px; line-height: 1.6; margin: 0;">
+                ${escapedComment}
+              </p>
+            </div>
+            <div style="text-align: center;">
+              <a href="${data.projectUrl}" style="display: inline-block; background: linear-gradient(135deg, #81bb26 0%, #6fa01f 100%); color: #ffffff; text-decoration: none; font-weight: 600; font-size: 15px; padding: 12px 28px; border-radius: 9999px; box-shadow: 0 8px 20px rgba(129, 187, 38, 0.25);">
+                View Comment
+              </a>
+            </div>
+        </div>
+        <div style="background-color: #f8f9fa; padding: 18px 36px; text-align: center; border-top: 1px solid #e9ecef;">
+            <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+                © ${new Date().getFullYear()} Gol Centres. All rights reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+    `.trim();
+  }
+
   private createEmailMessage(to: string, subject: string, body: string): string {
     const email = [
       `To: ${to}`,
@@ -171,5 +251,14 @@ export class EmailNotificationService {
     ].join('\r\n');
 
     return Buffer.from(email).toString('base64').replace(/\+/g, '-').replace(/\//g, '_');
+  }
+
+  private escapeHtml(input: string): string {
+    return input
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 }

@@ -175,10 +175,13 @@ export default function ProjectList() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <div className="p-6 max-w-6xl mx-auto">
+    <div className="relative min-h-screen overflow-hidden bg-slate-950">
+      <div className="pointer-events-none absolute -left-40 top-0 h-[60rem] w-[60rem] rotate-12 rounded-full bg-[radial-gradient(circle_at_center,_rgba(129,187,38,0.35)_0%,_rgba(12,74,110,0.05)_70%,_transparent_100%)] blur-3xl" />
+      <div className="pointer-events-none absolute right-[-20rem] top-40 h-[50rem] w-[50rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(12,74,110,0.35)_0%,_rgba(124,58,237,0.08)_60%,_transparent_100%)] blur-3xl" />
+
+      <div className="relative z-10 mx-auto flex max-w-6xl flex-col gap-10 px-6 py-10">
         {/* Greeting section: if it's evening, display Good Ebening image; otherwise, show text */}
-        <div className="mb-8 text-4xl font-extrabold text-center transition-transform duration-300 ease-in-out hover:scale-105">
+        <div className="text-center text-4xl font-extrabold text-white transition-transform duration-300 ease-in-out hover:scale-105">
           {isEvening ? (
             <Image
               src="/motivational/good ebening.jpg"
@@ -188,7 +191,7 @@ export default function ProjectList() {
               className="mx-auto"
             />
           ) : (
-            <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-transparent bg-clip-text">
+            <span className="bg-gradient-to-r from-lime-300 via-emerald-300 to-cyan-200 bg-clip-text text-transparent">
               {ukHour < 12 ? "Bore Da" : "Prynhawn Da"}, {displayName}
             </span>
           )}
@@ -196,7 +199,7 @@ export default function ProjectList() {
 
         {/* Conditionally display white goodman image only if it's not evening */}
         {!isEvening && displayName && ["Andrew", "Jake", "Steve", "Aaron"].includes(displayName) && (
-          <div className="my-6 flex justify-center">
+          <div className="flex justify-center">
             <Image
               src="/motivational/white goodman.jpg"
               alt="Motivational Dodgeball"
@@ -208,20 +211,19 @@ export default function ProjectList() {
         )}
 
         {/* Header with NewProjectDialog */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
-          <h2 className="text-3xl font-bold text-gray-900">Projects</h2>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <Input
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Search projects"
               aria-label="Search projects"
-              className="w-full sm:w-64"
+              className="w-full border-white/30 bg-white/10 text-white placeholder:text-white/60 backdrop-blur-lg sm:w-64"
             />
             <Select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as ProjectStatusFilter)}
-              className="w-full sm:w-44"
+              className="w-full border-white/30 bg-white/10 text-white backdrop-blur-lg sm:w-44"
               aria-label="Filter projects by status"
             >
               <option value="all">All statuses</option>
@@ -236,45 +238,46 @@ export default function ProjectList() {
           </div>
         </div>
 
-        <hr className="mb-6 border-gray-200" />
-
         {/* Active Projects Section */}
         {showActiveSection && (
-          <section className="mb-6">
+          <section className="space-y-6">
             <div
-              className="flex items-center justify-between mb-6 cursor-pointer bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-all duration-300"
+              className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/10 p-5 shadow-lg shadow-slate-950/40 backdrop-blur-xl transition-all duration-300 hover:bg-white/15"
               onClick={() => setActiveOpen(!activeOpen)}
             >
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+              <h2 className="flex items-center gap-3 text-2xl font-bold text-white">
                 Active Projects
-                <span className="px-3 py-1 bg-[#1c3145]/10 text-[#1c3145] rounded-full text-sm font-medium">
+                <span className="rounded-full bg-white/20 px-3 py-1 text-sm font-medium text-white/90">
                   {activeProjects.length}
                 </span>
               </h2>
               {activeOpen ? (
-                <ChevronDown className="w-6 h-6 text-gray-500" />
+                <ChevronDown className="h-6 w-6 text-white/70" />
               ) : (
-                <ChevronRight className="w-6 h-6 text-gray-500" />
+                <ChevronRight className="h-6 w-6 text-white/70" />
               )}
             </div>
             {activeOpen && (
               <>
                 {activeProjects.length === 0 ? (
-                  <p className="text-gray-500">No active projects match your filters.</p>
+                  <p className="text-white/70">No active projects match your filters.</p>
                 ) : (
                   <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {activeProjects.map((project) => (
-                      <Card key={project.id} className="hover:shadow-lg transition-all duration-300 border-l-4 border-[#1c3145]">
-                        <CardContent className="p-6 flex flex-col h-full">
+                      <Card
+                        key={project.id}
+                        className="border border-white/15 bg-white/10 text-white shadow-2xl shadow-slate-900/40 backdrop-blur-2xl transition-all duration-300 hover:bg-white/15"
+                      >
+                        <CardContent className="flex h-full flex-col p-6">
                           {/* Project details */}
                           <div
                             className="cursor-pointer group"
                             onClick={() => router.push(`/projects/${project.id}`)}
                           >
-                            <h4 className="text-2xl font-semibold text-gray-900 group-hover:text-[#1c3145] transition-colors duration-300">
+                            <h4 className="text-2xl font-semibold text-white transition-colors duration-300 group-hover:text-lime-200">
                               {project.name}
                             </h4>
-                            <p className="text-gray-700 mt-1">{project.description}</p>
+                            <p className="mt-1 text-sm text-white/70">{project.description}</p>
                           </div>
                           <div className="mt-auto" />
                           {/* Button group */}
@@ -292,7 +295,7 @@ export default function ProjectList() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="text-red-600 hover:bg-red-100 transition-colors duration-300 p-2"
+                              className="border-white/20 bg-white/10 p-2 text-rose-200 hover:bg-white/20"
                               aria-label="Delete project"
                               title="Delete project"
                               onClick={() => deleteProject(project.id)}
@@ -302,7 +305,7 @@ export default function ProjectList() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="text-green-600 hover:bg-green-100 transition-colors duration-300 p-2"
+                              className="border-white/20 bg-white/10 p-2 text-emerald-200 hover:bg-white/20"
                               aria-label="Toggle project completion"
                               title="Toggle project completion"
                               onClick={() => toggleProjectCompletion(project.id, project.completed)}
@@ -320,44 +323,45 @@ export default function ProjectList() {
           </section>
         )}
 
-        <hr className="mb-8 border-gray-200" />
-
         {/* Completed Projects Section */}
         {showCompletedSection && (
-          <section>
+          <section className="space-y-6">
             <div
-              className="flex items-center justify-between mb-6 cursor-pointer bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-all duration-300"
+              className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/10 p-5 shadow-lg shadow-slate-950/40 backdrop-blur-xl transition-all duration-300 hover:bg-white/15"
               onClick={() => setCompletedOpen(!completedOpen)}
             >
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+              <h2 className="flex items-center gap-3 text-2xl font-bold text-white">
                 Completed Projects
-                <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                <span className="rounded-full bg-emerald-400/30 px-3 py-1 text-sm font-medium text-emerald-100">
                   {completedProjects.length}
                 </span>
               </h2>
               {completedOpen ? (
-                <ChevronDown className="w-6 h-6 text-gray-500" />
+                <ChevronDown className="h-6 w-6 text-white/70" />
               ) : (
-                <ChevronRight className="w-6 h-6 text-gray-500" />
+                <ChevronRight className="h-6 w-6 text-white/70" />
               )}
             </div>
             {completedOpen && (
               <>
                 {completedProjects.length === 0 ? (
-                  <p className="text-gray-500">No completed projects match your filters.</p>
+                  <p className="text-white/70">No completed projects match your filters.</p>
                 ) : (
                   <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {completedProjects.map((project) => (
-                      <Card key={project.id} className="hover:shadow-lg transition-all duration-300 border-l-4 border-green-500 bg-gray-50">
-                        <CardContent className="p-6 flex flex-col h-full">
+                      <Card
+                        key={project.id}
+                        className="border border-emerald-300/20 bg-emerald-200/15 text-white shadow-2xl shadow-emerald-900/30 backdrop-blur-2xl transition-all duration-300 hover:bg-emerald-200/25"
+                      >
+                        <CardContent className="flex h-full flex-col p-6">
                           <div
                             className="cursor-pointer group"
                             onClick={() => router.push(`/projects/${project.id}`)}
                           >
-                            <h4 className="text-2xl font-semibold text-gray-700 group-hover:text-green-600 transition-colors duration-300">
+                            <h4 className="text-2xl font-semibold text-white transition-colors duration-300 group-hover:text-emerald-100">
                               {project.name}
                             </h4>
-                            <p className="text-gray-600 mt-1">{project.description}</p>
+                            <p className="mt-1 text-sm text-white/70">{project.description}</p>
                           </div>
                           <div className="mt-auto" />
                           <div className="flex justify-end gap-3">
@@ -374,7 +378,7 @@ export default function ProjectList() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="text-red-600 hover:bg-red-100 transition-colors duration-300 p-2"
+                              className="border-white/20 bg-white/10 p-2 text-rose-200 hover:bg-white/20"
                               aria-label="Delete project"
                               title="Delete project"
                               onClick={() => deleteProject(project.id)}
@@ -384,7 +388,7 @@ export default function ProjectList() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="text-green-600 hover:bg-green-100 transition-colors duration-300 p-2"
+                              className="border-white/20 bg-white/10 p-2 text-emerald-200 hover:bg-white/20"
                               aria-label="Toggle project completion"
                               title="Toggle project completion"
                               onClick={() => toggleProjectCompletion(project.id, project.completed)}
@@ -403,7 +407,7 @@ export default function ProjectList() {
         )}
 
         {filteredProjects.length === 0 && (
-          <p className="mt-6 text-center text-gray-500">No projects match your search or filters.</p>
+          <p className="text-center text-sm text-white/70">No projects match your search or filters.</p>
         )}
       </div>
     </div>
