@@ -12,6 +12,8 @@ import {
   ChevronRight,
   List,
   Columns,
+  CalendarClock,
+  Target,
 } from "lucide-react";
 import NewTaskDialog from "./NewTaskDialog";
 import EditTaskDialog from "./EditTaskDialog";
@@ -201,32 +203,16 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
     }
   };
 
-  const getStatusIcon = (status: Project["status"]) => {
-    const iconClass = "w-5 h-5";
-    switch (status) {
-      case "completed":
-        return <CheckCircle className={`${iconClass} text-green-500`} />;
-      case "in_progress":
-        return <Activity className={`${iconClass} text-blue-500`} />;
-      case "not_started":
-        return <Clock className={`${iconClass} text-gray-500`} />;
-      case "delayed":
-        return <AlertTriangle className={`${iconClass} text-red-500`} />;
-      default:
-        return <Clock className={`${iconClass} text-gray-500`} />;
-    }
-  };
-
   const getTaskStatusIcon = (status: Task["status"]) => {
     switch (status) {
       case "completed":
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
+        return <CheckCircle className="w-4 h-4 text-emerald-500" />;
       case "in_progress":
-        return <Activity className="w-4 h-4 text-blue-500" />;
+        return <Activity className="w-4 h-4 text-[#81bb26]" />;
       case "todo":
-        return <Clock className="w-4 h-4 text-gray-500" />;
+        return <Clock className="w-4 h-4 text-slate-400" />;
       case "blocked":
-        return <AlertTriangle className="w-4 h-4 text-red-500" />;
+        return <AlertTriangle className="w-4 h-4 text-rose-500" />;
       default:
         return null;
     }
@@ -306,6 +292,80 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
     return direction === "asc" ? sorted : sorted.reverse();
   }, [kpis, kpiSortConfig]);
 
+  const todoTasks = sortedTasks.filter((task) => task.status !== "completed");
+  const completedTasks = sortedTasks.filter((task) => task.status === "completed");
+
+  const taskStats = useMemo(() => {
+    const open = tasks.filter((task) => task.status !== "completed");
+    const completedCount = tasks.filter((task) => task.status === "completed").length;
+    const blockedCount = tasks.filter((task) => task.status === "blocked").length;
+    const upcoming = open
+      .filter((task) => Boolean(task.due_date))
+      .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
+
+    return {
+      openCount: open.length,
+      completedCount,
+      blockedCount,
+      nextDue: upcoming.length > 0 ? upcoming[0] : null,
+    };
+  }, [tasks]);
+
+  const kpiStats = useMemo(() => {
+    if (kpis.length === 0) {
+      return { count: 0, next: null as KPI | null };
+    }
+
+    const sorted = [...kpis].sort(
+      (a, b) => new Date(a.measure_date).getTime() - new Date(b.measure_date).getTime()
+    );
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const upcoming = sorted.find((kpi) => new Date(kpi.measure_date) >= todayStart);
+
+    return {
+      count: kpis.length,
+      next: upcoming ?? sorted[sorted.length - 1],
+    };
+  }, [kpis]);
+
+  const highlightCards = [
+    {
+      label: "Active tasks",
+      value: taskStats.openCount,
+      helper: taskStats.openCount ? "In motion" : "You're all caught up",
+      icon: List,
+      iconClasses: "bg-[#81bb26]/15 text-[#09162a]",
+    },
+    {
+      label: "Completed",
+      value: taskStats.completedCount,
+      helper: taskStats.completedCount ? "Marked done" : "Ready to make progress",
+      icon: CheckCircle,
+      iconClasses: "bg-emerald-500/15 text-emerald-600",
+    },
+    {
+      label: "Blocked",
+      value: taskStats.blockedCount,
+      helper: taskStats.blockedCount ? "Needs attention" : "No blockers",
+      icon: AlertTriangle,
+      iconClasses: "bg-amber-100 text-amber-600",
+    },
+    {
+      label: "KPIs tracked",
+      value: kpiStats.count,
+      helper: kpiStats.count ? "Measuring progress" : "Add your first KPI",
+      icon: Target,
+      iconClasses: "bg-[#09162a]/10 text-[#09162a]",
+    },
+  ];
+
+  const hasDescription = Boolean(project?.description && project.description.trim().length > 0);
+
+  const nextTaskAssignee = taskStats.nextDue?.assigned_to
+    ? profiles.find((profile) => profile.id === taskStats.nextDue?.assigned_to)?.display_name ?? null
+    : null;
+
   const handleTaskSort = (column: TaskSortColumn) => {
     setTaskSortConfig((prev) => {
       if (prev.column === column) {
@@ -342,12 +402,22 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
 
   if (loading) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
-        <div className="animate-pulse">
-          <div className="h-8 w-64 bg-gray-200 rounded mb-6"></div>
-          {[1, 2, 3].map((n) => (
-            <div key={n} className="mb-4 h-24 bg-gray-100 rounded"></div>
-          ))}
+      <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-emerald-50">
+        <div className="pointer-events-none absolute -top-40 -left-32 h-[36rem] w-[36rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(129,187,38,0.28)_0%,_rgba(148,163,184,0.08)_60%,_transparent_100%)] blur-3xl" />
+        <div className="pointer-events-none absolute bottom-[-14rem] right-[-20rem] h-[44rem] w-[44rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(56,189,248,0.22)_0%,_rgba(129,187,38,0.12)_55%,_transparent_100%)] blur-3xl" />
+        <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-12">
+          <div className="rounded-3xl border border-white/70 bg-white/80 p-8 shadow-xl backdrop-blur">
+            <div className="animate-pulse space-y-6">
+              <div className="h-8 w-48 rounded-full bg-slate-200/70" />
+              <div className="h-16 rounded-2xl bg-slate-100/70" />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="h-20 rounded-2xl bg-slate-100/70" />
+                <div className="h-20 rounded-2xl bg-slate-100/70" />
+                <div className="h-20 rounded-2xl bg-slate-100/70" />
+                <div className="h-20 rounded-2xl bg-slate-100/70" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -355,463 +425,542 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
 
   if (error || !project) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          {error || "Project not found"}
+      <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-emerald-50">
+        <div className="pointer-events-none absolute -top-40 -left-32 h-[36rem] w-[36rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(129,187,38,0.28)_0%,_rgba(148,163,184,0.08)_60%,_transparent_100%)] blur-3xl" />
+        <div className="pointer-events-none absolute bottom-[-14rem] right-[-20rem] h-[44rem] w-[44rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(56,189,248,0.22)_0%,_rgba(129,187,38,0.12)_55%,_transparent_100%)] blur-3xl" />
+        <div className="relative z-10 mx-auto w-full max-w-lg px-6 py-16">
+          <div className="rounded-3xl border border-rose-100 bg-white/85 p-8 text-center shadow-xl backdrop-blur">
+            <h2 className="text-xl font-semibold text-[#09162a]">Something went wrong</h2>
+            <p className="mt-3 text-sm leading-relaxed text-rose-600">
+              {error || "Project not found"}
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Split tasks into "To do" and "Completed"
-  const todoTasks = sortedTasks.filter((task) => task.status !== "completed");
-  const completedTasks = sortedTasks.filter((task) => task.status === "completed");
-
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-emerald-50">
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50">
       <div className="pointer-events-none absolute -top-40 -left-32 h-[36rem] w-[36rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(129,187,38,0.28)_0%,_rgba(148,163,184,0.08)_60%,_transparent_100%)] blur-3xl" />
       <div className="pointer-events-none absolute bottom-[-14rem] right-[-20rem] h-[44rem] w-[44rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(56,189,248,0.22)_0%,_rgba(129,187,38,0.12)_55%,_transparent_100%)] blur-3xl" />
-      <div className="relative z-10 mx-auto w-full max-w-5xl px-6 py-10">
-        <div className="rounded-3xl border border-white/70 bg-white/80 p-8 shadow-xl backdrop-blur">
-        {/* Project Header */}
-        <section className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            {getStatusIcon(project.status)}
-            <h1 className="text-2xl font-bold">{project.name}</h1>
-          </div>
-          <p className="text-gray-600">{project.description}</p>
-        </section>
-
-        <hr className="my-10 border-slate-200/80" />
-
-        {/* View Toggle */}
-        <section className="mb-6">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">View:</span>
-            <div className="flex border border-emerald-100/80 bg-white/70 rounded-lg overflow-hidden backdrop-blur-sm">
-              <button
-                onClick={() => setViewMode('list')}
-                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
-                  viewMode === 'list'
-                    ? 'bg-emerald-500 text-white shadow-sm'
-                    : 'bg-white text-gray-700 hover:bg-emerald-50'
-                }`}
-              >
-                <List className="w-4 h-4" />
-                List
-              </button>
-              <button
-                onClick={() => setViewMode('kanban')}
-                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
-                  viewMode === 'kanban'
-                    ? 'bg-emerald-500 text-white shadow-sm'
-                    : 'bg-white text-gray-700 hover:bg-emerald-50'
-                }`}
-              >
-                <Columns className="w-4 h-4" />
-                Kanban
-              </button>
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-12 px-6 py-12">
+        <section className="flex flex-col gap-6">
+          <div className="rounded-3xl border border-white/60 bg-white/85 px-8 py-10 shadow-xl backdrop-blur-xl">
+            <div className="space-y-4">
+              <h1 className="text-3xl font-semibold text-[#09162a] leading-tight">{project.name}</h1>
+              {hasDescription ? (
+                <p className="max-w-3xl text-sm leading-relaxed text-slate-600">{project.description}</p>
+              ) : null}
             </div>
           </div>
-        </section>
 
-        {/* Tasks Section */}
-        {viewMode === 'kanban' ? (
-          <section className="mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Tasks</h2>
-              <NewTaskDialog
-                projectId={project.id}
-                onTaskCreated={(newTask: Task) => setTasks((prevTasks) => [newTask, ...prevTasks])}
-              />
-            </div>
-            <KanbanBoard 
-              initialData={[
-                {
-                  id: 'todo',
-                  title: 'To Do',
-                  tasks: tasks.filter(task => task.status === 'todo').map(task => ({
-                    id: task.id,
-                    title: task.title,
-                    description: task.description || undefined,
-                    assignee: profiles.find(p => p.id === task.assigned_to)?.display_name,
-                    dueDate: task.due_date ? formatDateDisplay(task.due_date) : undefined,
-                  }))
-                },
-                {
-                  id: 'inprogress',
-                  title: 'In Progress',
-                  tasks: tasks.filter(task => task.status === 'in_progress').map(task => ({
-                    id: task.id,
-                    title: task.title,
-                    description: task.description || undefined,
-                    assignee: profiles.find(p => p.id === task.assigned_to)?.display_name,
-                    dueDate: task.due_date ? formatDateDisplay(task.due_date) : undefined,
-                  }))
-                },
-                {
-                  id: 'completed',
-                  title: 'Completed',
-                  tasks: tasks.filter(task => task.status === 'completed').map(task => ({
-                    id: task.id,
-                    title: task.title,
-                    description: task.description || undefined,
-                    assignee: profiles.find(p => p.id === task.assigned_to)?.display_name,
-                    dueDate: task.due_date ? formatDateDisplay(task.due_date) : undefined,
-                  }))
-                }
-              ]}
-              tasks={tasks}
-              onTaskMove={(taskId: string, fromColumn: string, toColumn: string) => {
-                const statusMap: Record<string, Task['status']> = {
-                  'todo': 'todo',
-                  'inprogress': 'in_progress',
-                  'completed': 'completed'
-                };
-                updateTaskStatus(taskId, statusMap[toColumn]);
-              }}
-              onTaskUpdate={(updatedTask: Task) => {
-                setTasks((currentTasks) =>
-                  currentTasks.map((t) =>
-                    t.id === updatedTask.id ? updatedTask : t
-                  )
-                );
-              }}
-            />
-          </section>
-        ) : (
-          <>
-            {/* To do tasks section */}
-        <section className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <div
-              className="flex items-center gap-2 cursor-pointer"
-              onClick={() => setTodoOpen(!todoOpen)}
-            >
-              <h2 className="text-xl font-semibold">To do ({todoTasks.length})</h2>
-              {todoOpen ? (
-                <ChevronDown className="w-6 h-6" />
-              ) : (
-                <ChevronRight className="w-6 h-6" />
-              )}
-            </div>
-            <div onClick={(e) => e.stopPropagation()}>
-              <NewTaskDialog
-                projectId={project.id}
-                onTaskCreated={(newTask: Task) => setTasks((prevTasks) => [newTask, ...prevTasks])}
-              />
-            </div>
-          </div>
-          {todoOpen &&
-            (todoTasks.length === 0 ? (
-              <p className="text-gray-500">No tasks yet</p>
-            ) : (
-              <div className="border border-emerald-200/70 rounded-2xl overflow-hidden bg-white/90 shadow-lg backdrop-blur-sm">
-                <table className="w-full">
-                  <thead className="bg-emerald-100 text-emerald-900">
-                    <tr>
-                      <th
-                        className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
-                        onClick={() => handleTaskSort("title")}
-                      >
-                        Task{renderSortArrowForTasks("title")}
-                      </th>
-                      <th
-                        className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
-                        onClick={() => handleTaskSort("status")}
-                      >
-                        Status{renderSortArrowForTasks("status")}
-                      </th>
-                      <th
-                        className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
-                        onClick={() => handleTaskSort("assigned_to")}
-                      >
-                        Assignee{renderSortArrowForTasks("assigned_to")}
-                      </th>
-                      <th
-                        className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
-                        onClick={() => handleTaskSort("due_date")}
-                      >
-                        Due{renderSortArrowForTasks("due_date")}
-                      </th>
-                      <th className="px-6 py-2 text-right text-sm font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-emerald-100 bg-white/95">
-                    {todoTasks.map((task) => (
-                    <tr key={task.id} className="hover:bg-emerald-50/70">
-                        <td className="px-6 py-3 text-sm text-gray-900 whitespace-normal break-words">
-                          {task.title}
-                        </td>
-                        <td className="px-6 py-3 whitespace-nowrap text-sm flex items-center gap-2">
-                          {getTaskStatusIcon(task.status)}
-                          <Select
-                            value={task.status}
-                            className="min-w-[100px] text-xs"
-                            onChange={(e) =>
-                              updateTaskStatus(task.id, e.target.value as Task["status"])
-                            }
-                          >
-                            <option value="todo">To Do</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="completed">Completed</option>
-                            <option value="blocked">Blocked</option>
-                          </Select>
-                        </td>
-                        <td className="px-6 py-3 whitespace-nowrap text-sm">
-                          <Select
-                            value={task.assigned_to || ""}
-                            className="min-w-[100px] text-xs"
-                            onChange={(e) => updateTaskAssignee(task.id, e.target.value)}
-                          >
-                            <option value="">Unassigned</option>
-                            {profiles.map((profile) => (
-                              <option key={profile.id} value={profile.id}>
-                                {profile.display_name}
-                              </option>
-                            ))}
-                          </Select>
-                        </td>
-                        <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900">
-                          {task.due_date ? formatDateDisplay(task.due_date) : "-"}
-                        </td>
-                        <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex justify-end items-center gap-2">
-                            <EditTaskDialog
-                              task={task}
-                              onTaskUpdated={(updatedTask: Task) =>
-                                setTasks((currentTasks) =>
-                                  currentTasks.map((t) =>
-                                    t.id === updatedTask.id ? updatedTask : t
-                                  )
-                                )
-                              }
-                            />
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                              onClick={() => deleteTask(task.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="rounded-3xl border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur-xl">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Snapshot</h3>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {highlightCards.map((card) => {
+                  const Icon = card.icon;
+                  return (
+                    <div
+                      key={card.label}
+                      className="flex items-center justify-between rounded-2xl border border-emerald-100/60 bg-white/80 p-4 shadow-sm backdrop-blur"
+                    >
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-slate-500">{card.label}</p>
+                        <p className="mt-1 text-2xl font-semibold text-[#09162a]">{card.value}</p>
+                        <p className="mt-1 text-xs text-slate-500">{card.helper}</p>
+                      </div>
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${card.iconClasses}`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+            </div>
+            <div className="rounded-3xl border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur-xl">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Next key dates</h3>
+              <div className="mt-4 space-y-4">
+                <div className="rounded-2xl border border-emerald-100/60 bg-white/90 p-4 shadow-sm backdrop-blur">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#81bb26]/15 text-[#09162a]">
+                      <List className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[#09162a]">Next due task</p>
+                      {taskStats.nextDue ? (
+                        <>
+                          <p className="text-xs text-slate-500">
+                            {formatDateDisplay(taskStats.nextDue.due_date!)}
+                            {nextTaskAssignee ? ` · ${nextTaskAssignee}` : ""}
+                          </p>
+                          <p className="mt-1 text-sm text-slate-600">{taskStats.nextDue.title}</p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-slate-500">There are no upcoming due dates.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-emerald-100/60 bg-white/90 p-4 shadow-sm backdrop-blur">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#09162a]/10 text-[#09162a]">
+                      <CalendarClock className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[#09162a]">Next KPI review</p>
+                      {kpiStats.count > 0 && kpiStats.next ? (
+                        <>
+                          <p className="text-xs text-slate-500">{formatDateDisplay(kpiStats.next.measure_date)}</p>
+                          <p className="mt-1 text-sm text-slate-600">{kpiStats.next.title}</p>
+                          {kpiStats.next.result ? (
+                            <p className="mt-1 text-xs text-slate-500">Latest result: {kpiStats.next.result}</p>
+                          ) : null}
+                        </>
+                      ) : (
+                        <p className="text-xs text-slate-500">Add KPIs to start tracking milestones.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
-        <hr className="my-10 border-slate-200/80" />
-
-        {/* Completed tasks section */}
-        <section className="mb-8">
-          <div
-            className="flex items-center gap-2 cursor-pointer mb-4"
-            onClick={() => setCompletedOpen(!completedOpen)}
-          >
-            <h2 className="text-xl font-semibold">
-              Completed tasks ({completedTasks.length})
-            </h2>
-            {completedOpen ? (
-              <ChevronDown className="w-6 h-6" />
+        <section className="rounded-3xl border border-white/60 bg-white/80 p-8 shadow-xl backdrop-blur-xl">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-semibold text-[#09162a]">Tasks</h2>
+              <p className="text-sm text-slate-500">
+                {taskStats.openCount} active · {taskStats.completedCount} completed
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex overflow-hidden rounded-lg border border-emerald-100/80 bg-white/80 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+                    viewMode === 'list'
+                      ? 'bg-[#09162a] text-white shadow-inner'
+                      : 'text-[#09162a] hover:bg-[#81bb26]/10'
+                  }`}
+                >
+                  <List className="h-4 w-4" />
+                  List
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('kanban')}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+                    viewMode === 'kanban'
+                      ? 'bg-[#09162a] text-white shadow-inner'
+                      : 'text-[#09162a] hover:bg-[#81bb26]/10'
+                  }`}
+                >
+                  <Columns className="h-4 w-4" />
+                  Kanban
+                </button>
+              </div>
+              <NewTaskDialog
+                projectId={project.id}
+                onTaskCreated={(newTask: Task) => setTasks((prevTasks) => [newTask, ...prevTasks])}
+              />
+            </div>
+          </div>
+          <div className="mt-6">
+            {viewMode === 'kanban' ? (
+              <div className="rounded-2xl border border-emerald-100/70 bg-white/90 p-4 shadow-sm backdrop-blur-sm">
+                <KanbanBoard
+                  initialData={[
+                    {
+                      id: 'todo',
+                      title: 'To Do',
+                      tasks: tasks
+                        .filter((task) => task.status === 'todo')
+                        .map((task) => ({
+                          id: task.id,
+                          title: task.title,
+                          description: task.description || undefined,
+                          assignee: profiles.find((p) => p.id === task.assigned_to)?.display_name,
+                          dueDate: task.due_date ? formatDateDisplay(task.due_date) : undefined,
+                        })),
+                    },
+                    {
+                      id: 'inprogress',
+                      title: 'In Progress',
+                      tasks: tasks
+                        .filter((task) => task.status === 'in_progress')
+                        .map((task) => ({
+                          id: task.id,
+                          title: task.title,
+                          description: task.description || undefined,
+                          assignee: profiles.find((p) => p.id === task.assigned_to)?.display_name,
+                          dueDate: task.due_date ? formatDateDisplay(task.due_date) : undefined,
+                        })),
+                    },
+                    {
+                      id: 'completed',
+                      title: 'Completed',
+                      tasks: tasks
+                        .filter((task) => task.status === 'completed')
+                        .map((task) => ({
+                          id: task.id,
+                          title: task.title,
+                          description: task.description || undefined,
+                          assignee: profiles.find((p) => p.id === task.assigned_to)?.display_name,
+                          dueDate: task.due_date ? formatDateDisplay(task.due_date) : undefined,
+                        })),
+                    },
+                  ]}
+                  tasks={tasks}
+                  onTaskMove={(taskId: string, fromColumn: string, toColumn: string) => {
+                    const statusMap: Record<string, Task['status']> = {
+                      todo: 'todo',
+                      inprogress: 'in_progress',
+                      completed: 'completed',
+                    };
+                    updateTaskStatus(taskId, statusMap[toColumn]);
+                  }}
+                  onTaskUpdate={(updatedTask: Task) => {
+                    setTasks((currentTasks) =>
+                      currentTasks.map((t) => (t.id === updatedTask.id ? updatedTask : t))
+                    );
+                  }}
+                />
+              </div>
             ) : (
-              <ChevronRight className="w-6 h-6" />
+              <div className="space-y-6">
+                <div className="rounded-2xl border border-emerald-100/70 bg-white/90 p-4 shadow-sm backdrop-blur-sm">
+                  <button
+                    type="button"
+                    onClick={() => setTodoOpen(!todoOpen)}
+                    className="flex w-full items-center justify-between gap-3 text-left"
+                  >
+                    <div>
+                      <h3 className="text-lg font-semibold text-[#09162a]">
+                        Active tasks ({todoTasks.length})
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-500">Tasks that still need action</p>
+                    </div>
+                    {todoOpen ? (
+                      <ChevronDown className="h-5 w-5 text-slate-500" />
+                    ) : (
+                      <ChevronRight className="h-5 w-5 text-slate-500" />
+                    )}
+                  </button>
+                  {todoOpen ? (
+                    <div className="mt-4 border border-emerald-100/70">
+                      <table className="w-full overflow-hidden rounded-2xl">
+                        <thead className="bg-emerald-100 text-emerald-900">
+                          <tr>
+                            <th
+                              className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                              onClick={() => handleTaskSort('title')}
+                            >
+                              Task{renderSortArrowForTasks('title')}
+                            </th>
+                            <th
+                              className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                              onClick={() => handleTaskSort('status')}
+                            >
+                              Status{renderSortArrowForTasks('status')}
+                            </th>
+                            <th
+                              className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                              onClick={() => handleTaskSort('assigned_to')}
+                            >
+                              Assignee{renderSortArrowForTasks('assigned_to')}
+                            </th>
+                            <th
+                              className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                              onClick={() => handleTaskSort('due_date')}
+                            >
+                              Due{renderSortArrowForTasks('due_date')}
+                            </th>
+                            <th className="px-6 py-2 text-right text-sm font-medium">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-emerald-100 bg-white/95">
+                          {todoTasks.map((task) => (
+                            <tr key={task.id} className="hover:bg-emerald-50/70">
+                              <td className="px-6 py-3 whitespace-normal break-words text-sm text-gray-900">
+                                {task.title}
+                              </td>
+                              <td className="px-6 py-3 whitespace-nowrap text-sm">
+                                <div className="flex items-center gap-2">
+                                  {getTaskStatusIcon(task.status)}
+                                  <Select
+                                    value={task.status}
+                                    className="min-w-[110px] text-xs"
+                                    onChange={(event) =>
+                                      updateTaskStatus(task.id, event.target.value as Task['status'])
+                                    }
+                                  >
+                                    <option value="todo">To Do</option>
+                                    <option value="in_progress">In Progress</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="blocked">Blocked</option>
+                                  </Select>
+                                </div>
+                              </td>
+                              <td className="px-6 py-3 whitespace-nowrap text-sm">
+                                <Select
+                                  value={task.assigned_to || ""}
+                                  className="min-w-[110px] text-xs"
+                                  onChange={(event) => updateTaskAssignee(task.id, event.target.value)}
+                                >
+                                  <option value="">Unassigned</option>
+                                  {profiles.map((profile) => (
+                                    <option key={profile.id} value={profile.id}>
+                                      {profile.display_name}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </td>
+                              <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900">
+                                {task.due_date ? formatDateDisplay(task.due_date) : "-"}
+                              </td>
+                              <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
+                                <div className="flex items-center justify-end gap-2">
+                                  <EditTaskDialog
+                                    task={task}
+                                    onTaskUpdated={(updatedTask: Task) =>
+                                      setTasks((currentTasks) =>
+                                        currentTasks.map((t) =>
+                                          t.id === updatedTask.id ? updatedTask : t
+                                        )
+                                      )
+                                    }
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                                    onClick={() => deleteTask(task.id)}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
+                </div>
+                <div className="rounded-2xl border border-emerald-100/70 bg-white/90 p-4 shadow-sm backdrop-blur-sm">
+                  <button
+                    type="button"
+                    onClick={() => setCompletedOpen(!completedOpen)}
+                    className="flex w-full items-center justify-between gap-3 text-left"
+                  >
+                    <div>
+                      <h3 className="text-lg font-semibold text-[#09162a]">
+                        Completed ({completedTasks.length})
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-500">Recently signed off to-dos</p>
+                    </div>
+                    {completedOpen ? (
+                      <ChevronDown className="h-5 w-5 text-slate-500" />
+                    ) : (
+                      <ChevronRight className="h-5 w-5 text-slate-500" />
+                    )}
+                  </button>
+                  {completedOpen ? (
+                    <div className="mt-4 border border-emerald-100/70">
+                      <table className="w-full overflow-hidden rounded-2xl">
+                        <thead className="bg-emerald-100 text-emerald-900">
+                          <tr>
+                            <th
+                              className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                              onClick={() => handleTaskSort('title')}
+                            >
+                              Task{renderSortArrowForTasks('title')}
+                            </th>
+                            <th
+                              className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                              onClick={() => handleTaskSort('status')}
+                            >
+                              Status{renderSortArrowForTasks('status')}
+                            </th>
+                            <th
+                              className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                              onClick={() => handleTaskSort('assigned_to')}
+                            >
+                              Assignee{renderSortArrowForTasks('assigned_to')}
+                            </th>
+                            <th
+                              className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                              onClick={() => handleTaskSort('due_date')}
+                            >
+                              Completed{renderSortArrowForTasks('due_date')}
+                            </th>
+                            <th className="px-6 py-2 text-right text-sm font-medium">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-emerald-100 bg-white/95">
+                          {completedTasks.map((task) => (
+                            <tr key={task.id} className="hover:bg-emerald-50/70">
+                              <td className="px-6 py-3 whitespace-normal break-words text-sm text-gray-900">
+                                {task.title}
+                              </td>
+                              <td className="px-6 py-3 whitespace-nowrap text-sm">
+                                <div className="flex items-center gap-2">
+                                  {getTaskStatusIcon(task.status)}
+                                  <Select
+                                    value={task.status}
+                                    className="min-w-[110px] text-xs"
+                                    onChange={(event) =>
+                                      updateTaskStatus(task.id, event.target.value as Task['status'])
+                                    }
+                                  >
+                                    <option value="todo">To Do</option>
+                                    <option value="in_progress">In Progress</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="blocked">Blocked</option>
+                                  </Select>
+                                </div>
+                              </td>
+                              <td className="px-6 py-3 whitespace-nowrap text-sm">
+                                <Select
+                                  value={task.assigned_to || ""}
+                                  className="min-w-[110px] text-xs"
+                                  onChange={(event) => updateTaskAssignee(task.id, event.target.value)}
+                                >
+                                  <option value="">Unassigned</option>
+                                  {profiles.map((profile) => (
+                                    <option key={profile.id} value={profile.id}>
+                                      {profile.display_name}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </td>
+                              <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900">
+                                {task.due_date ? formatDateDisplay(task.due_date) : "-"}
+                              </td>
+                              <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
+                                <div className="flex items-center justify-end gap-2">
+                                  <EditTaskDialog
+                                    task={task}
+                                    onTaskUpdated={(updatedTask: Task) =>
+                                      setTasks((currentTasks) =>
+                                        currentTasks.map((t) =>
+                                          t.id === updatedTask.id ? updatedTask : t
+                                        )
+                                      )
+                                    }
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                                    onClick={() => deleteTask(task.id)}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
             )}
           </div>
-          {completedOpen &&
-            (completedTasks.length === 0 ? (
-              <p className="text-gray-500">No completed tasks yet</p>
-            ) : (
-            <div className="border border-emerald-200/70 rounded-2xl overflow-hidden bg-white/90 shadow-lg backdrop-blur-sm">
-                <table className="w-full">
-                <thead className="bg-emerald-100 text-emerald-900">
-                    <tr>
-                      <th
-                        className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
-                        onClick={() => handleTaskSort("title")}
-                      >
-                        Task{renderSortArrowForTasks("title")}
-                      </th>
-                      <th
-                        className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
-                        onClick={() => handleTaskSort("status")}
-                      >
-                        Status{renderSortArrowForTasks("status")}
-                      </th>
-                      <th
-                        className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
-                        onClick={() => handleTaskSort("assigned_to")}
-                      >
-                        Assignee{renderSortArrowForTasks("assigned_to")}
-                      </th>
-                      <th
-                        className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
-                        onClick={() => handleTaskSort("due_date")}
-                      >
-                        Due{renderSortArrowForTasks("due_date")}
-                      </th>
-                      <th className="px-6 py-2 text-right text-sm font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                <tbody className="divide-y divide-emerald-100 bg-white/95">
-                    {completedTasks.map((task) => (
-                    <tr key={task.id} className="hover:bg-emerald-50/70">
-                        <td className="px-6 py-3 text-sm text-gray-900 whitespace-normal break-words">
-                          {task.title}
-                        </td>
-                        <td className="px-6 py-3 whitespace-nowrap text-sm flex items-center gap-2">
-                          {getTaskStatusIcon(task.status)}
-                          <Select
-                            value={task.status}
-                            className="min-w-[100px] text-xs"
-                            onChange={(e) =>
-                              updateTaskStatus(task.id, e.target.value as Task["status"])
-                            }
-                          >
-                            <option value="todo">To Do</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="completed">Completed</option>
-                            <option value="blocked">Blocked</option>
-                          </Select>
-                        </td>
-                        <td className="px-6 py-3 whitespace-nowrap text-sm">
-                          <Select
-                            value={task.assigned_to || ""}
-                            className="min-w-[100px] text-xs"
-                            onChange={(e) => updateTaskAssignee(task.id, e.target.value)}
-                          >
-                            <option value="">Unassigned</option>
-                            {profiles.map((profile) => (
-                              <option key={profile.id} value={profile.id}>
-                                {profile.display_name}
-                              </option>
-                            ))}
-                          </Select>
-                        </td>
-                        <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900">
-                          {task.due_date ? formatDateDisplay(task.due_date) : "-"}
-                        </td>
-                        <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex justify-end items-center gap-2">
-                            <EditTaskDialog
-                              task={task}
-                              onTaskUpdated={(updatedTask: Task) =>
-                                setTasks((currentTasks) =>
-                                  currentTasks.map((t) =>
-                                    t.id === updatedTask.id ? updatedTask : t
-                                  )
-                                )
-                              }
-                            />
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                              onClick={() => deleteTask(task.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ))}
         </section>
-          </>
-        )}
 
-        <hr className="my-10 border-slate-200/80" />
-
-        {/* KPIs section */}
-        <section className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">KPIs</h2>
+        <section className="rounded-3xl border border-white/60 bg-white/80 p-8 shadow-xl backdrop-blur-xl">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-semibold text-[#09162a]">KPIs</h2>
+              <p className="text-sm text-slate-500">
+                {kpiStats.count ? `${kpiStats.count} metrics tracked` : "Track the numbers that matter"}
+              </p>
+            </div>
             <NewKPIDialog
               projectId={project.id}
               onKPICreated={(newKpi: KPI) => setKpis((prevKpis) => [newKpi, ...prevKpis])}
             />
           </div>
-          {sortedKpis.length === 0 ? (
-            <p className="text-gray-500">No KPIs yet</p>
-          ) : (
-            <div className="border border-emerald-200/70 rounded-2xl overflow-hidden bg-white/90 shadow-lg backdrop-blur-sm">
-              <table className="w-full">
-                <thead className="bg-emerald-100 text-emerald-900">
-                  <tr>
-                    <th
-                      className="px-6 py-3 text-left text-sm font-medium cursor-pointer"
-                      onClick={() => handleKpiSort("title")}
-                    >
-                      KPI{renderSortArrowForKpis("title")}
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-sm font-medium cursor-pointer"
-                      onClick={() => handleKpiSort("measure_date")}
-                    >
-                      Measure Date{renderSortArrowForKpis("measure_date")}
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-medium">Result</th>
-                    <th className="px-6 py-3 text-right text-sm font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-emerald-100 bg-white/95">
-                  {sortedKpis.map((kpi) => (
-                    <tr key={kpi.id} className="hover:bg-emerald-50/70">
-                      <td className="px-6 py-4 text-sm text-gray-900">{kpi.title}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {formatDateDisplay(kpi.measure_date)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">{kpi.result}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900 text-right">
-                        <div className="flex justify-end items-center gap-2">
-                          <EditKPIDialog
-                            kpi={kpi}
-                            onKPIUpdated={(updatedKpi: KPI) => {
-                              setKpis((currentKpis) =>
-                                currentKpis.map((k) => (k.id === updatedKpi.id ? updatedKpi : k))
-                              );
-                            }}
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                            onClick={() => deleteKPI(kpi.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
+          <div className="mt-6">
+            {sortedKpis.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-emerald-200/70 bg-white/85 p-6 text-sm text-slate-500 backdrop-blur-sm">
+                No KPIs yet. Add your first KPI to start monitoring progress.
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-emerald-100/70 bg-white/90 shadow-sm backdrop-blur-sm">
+                <table className="w-full overflow-hidden rounded-2xl">
+                  <thead className="bg-emerald-100 text-emerald-900">
+                    <tr>
+                      <th
+                        className="px-6 py-3 text-left text-sm font-medium cursor-pointer"
+                        onClick={() => handleKpiSort('title')}
+                      >
+                        KPI{renderSortArrowForKpis('title')}
+                      </th>
+                      <th
+                        className="px-6 py-3 text-left text-sm font-medium cursor-pointer"
+                        onClick={() => handleKpiSort('measure_date')}
+                      >
+                        Measure Date{renderSortArrowForKpis('measure_date')}
+                      </th>
+                      <th className="px-6 py-3 text-left text-sm font-medium">Result</th>
+                      <th className="px-6 py-3 text-right text-sm font-medium">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody className="divide-y divide-emerald-100 bg-white/95">
+                    {sortedKpis.map((kpi) => (
+                      <tr key={kpi.id} className="hover:bg-emerald-50/70">
+                        <td className="px-6 py-4 text-sm text-gray-900">{kpi.title}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{formatDateDisplay(kpi.measure_date)}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{kpi.result}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <EditKPIDialog
+                              kpi={kpi}
+                              onKPIUpdated={(updatedKpi: KPI) => {
+                                setKpis((currentKpis) =>
+                                  currentKpis.map((existing) =>
+                                    existing.id === updatedKpi.id ? updatedKpi : existing
+                                  )
+                                );
+                              }}
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                              onClick={() => deleteKPI(kpi.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </section>
 
-        <hr className="my-10 border-slate-200/80" />
-
-      {/* Project Timeline Section */}
-        <section className="mb-8">
-          <ProjectTimeline projectId={project.id} />
-          </section>
-
-        <hr className="my-10 border-slate-200/80" />
-
-        {/* Comments section */}
-        <section className="mb-8">
-          <ProjectComments projectId={project.id} />
+        <section className="grid gap-6 lg:grid-cols-2">
+          <div className="rounded-3xl border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur-xl">
+            <ProjectTimeline projectId={project.id} />
+          </div>
+          <div className="rounded-3xl border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur-xl">
+            <ProjectComments projectId={project.id} />
+          </div>
         </section>
       </div>
     </div>
-  </div>
   );
 }
