@@ -368,8 +368,11 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
   const completedTasks = sortedTasks.filter((task) => task.status === "completed");
 
   return (
-    <div>
-      <div className="p-6 max-w-5xl mx-auto">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-emerald-50">
+      <div className="pointer-events-none absolute -top-40 -left-32 h-[36rem] w-[36rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(129,187,38,0.28)_0%,_rgba(148,163,184,0.08)_60%,_transparent_100%)] blur-3xl" />
+      <div className="pointer-events-none absolute bottom-[-14rem] right-[-20rem] h-[44rem] w-[44rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(56,189,248,0.22)_0%,_rgba(129,187,38,0.12)_55%,_transparent_100%)] blur-3xl" />
+      <div className="relative z-10 mx-auto w-full max-w-5xl px-6 py-10">
+        <div className="rounded-3xl border border-white/70 bg-white/80 p-8 shadow-xl backdrop-blur">
         {/* Project Header */}
         <section className="mb-8">
           <div className="flex items-center gap-3 mb-2">
@@ -379,19 +382,19 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
           <p className="text-gray-600">{project.description}</p>
         </section>
 
-        <hr className="mb-8 border-gray-300" />
+        <hr className="my-10 border-slate-200/80" />
 
         {/* View Toggle */}
         <section className="mb-6">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-700">View:</span>
-            <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+            <div className="flex border border-emerald-100/80 bg-white/70 rounded-lg overflow-hidden backdrop-blur-sm">
               <button
                 onClick={() => setViewMode('list')}
                 className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
                   viewMode === 'list'
-                    ? 'bg-[#1c3145] text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                    ? 'bg-emerald-500 text-white shadow-sm'
+                    : 'bg-white text-gray-700 hover:bg-emerald-50'
                 }`}
               >
                 <List className="w-4 h-4" />
@@ -401,8 +404,8 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                 onClick={() => setViewMode('kanban')}
                 className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
                   viewMode === 'kanban'
-                    ? 'bg-[#1c3145] text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                    ? 'bg-emerald-500 text-white shadow-sm'
+                    : 'bg-white text-gray-700 hover:bg-emerald-50'
                 }`}
               >
                 <Columns className="w-4 h-4" />
@@ -503,9 +506,9 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
             (todoTasks.length === 0 ? (
               <p className="text-gray-500">No tasks yet</p>
             ) : (
-              <div className="border border-[#1c3145]/40 rounded-lg overflow-hidden shadow">
+              <div className="border border-emerald-200/70 rounded-2xl overflow-hidden bg-white/90 shadow-lg backdrop-blur-sm">
                 <table className="w-full">
-                  <thead className="bg-[#1c3145] text-white">
+                  <thead className="bg-emerald-100 text-emerald-900">
                     <tr>
                       <th
                         className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
@@ -534,9 +537,9 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                       <th className="px-6 py-2 text-right text-sm font-medium">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#1c3145]/40 bg-white">
+                  <tbody className="divide-y divide-emerald-100 bg-white/95">
                     {todoTasks.map((task) => (
-                      <tr key={task.id} className="hover:bg-[#81bb26]/10">
+                    <tr key={task.id} className="hover:bg-emerald-50/70">
                         <td className="px-6 py-3 text-sm text-gray-900 whitespace-normal break-words">
                           {task.title}
                         </td>
@@ -602,7 +605,7 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
             ))}
         </section>
 
-        <hr className="mb-8 border-gray-300" />
+        <hr className="my-10 border-slate-200/80" />
 
         {/* Completed tasks section */}
         <section className="mb-8">
@@ -623,9 +626,9 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
             (completedTasks.length === 0 ? (
               <p className="text-gray-500">No completed tasks yet</p>
             ) : (
-              <div className="border border-[#1c3145]/40 rounded-lg overflow-hidden shadow">
+            <div className="border border-emerald-200/70 rounded-2xl overflow-hidden bg-white/90 shadow-lg backdrop-blur-sm">
                 <table className="w-full">
-                  <thead className="bg-[#1c3145] text-white">
+                <thead className="bg-emerald-100 text-emerald-900">
                     <tr>
                       <th
                         className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
@@ -654,9 +657,9 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                       <th className="px-6 py-2 text-right text-sm font-medium">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#1c3145]/40 bg-white">
+                <tbody className="divide-y divide-emerald-100 bg-white/95">
                     {completedTasks.map((task) => (
-                      <tr key={task.id} className="hover:bg-[#81bb26]/10">
+                    <tr key={task.id} className="hover:bg-emerald-50/70">
                         <td className="px-6 py-3 text-sm text-gray-900 whitespace-normal break-words">
                           {task.title}
                         </td>
@@ -724,7 +727,7 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
           </>
         )}
 
-        <hr className="mb-8 border-gray-300" />
+        <hr className="my-10 border-slate-200/80" />
 
         {/* KPIs section */}
         <section className="mb-8">
@@ -738,9 +741,9 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
           {sortedKpis.length === 0 ? (
             <p className="text-gray-500">No KPIs yet</p>
           ) : (
-            <div className="border border-[#1c3145]/40 rounded-lg overflow-hidden shadow">
+            <div className="border border-emerald-200/70 rounded-2xl overflow-hidden bg-white/90 shadow-lg backdrop-blur-sm">
               <table className="w-full">
-                <thead className="bg-[#1c3145] text-white">
+                <thead className="bg-emerald-100 text-emerald-900">
                   <tr>
                     <th
                       className="px-6 py-3 text-left text-sm font-medium cursor-pointer"
@@ -758,9 +761,9 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                     <th className="px-6 py-3 text-right text-sm font-medium">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#1c3145]/40 bg-white">
+                <tbody className="divide-y divide-emerald-100 bg-white/95">
                   {sortedKpis.map((kpi) => (
-                    <tr key={kpi.id} className="hover:bg-[#81bb26]/10">
+                    <tr key={kpi.id} className="hover:bg-emerald-50/70">
                       <td className="px-6 py-4 text-sm text-gray-900">{kpi.title}</td>
                       <td className="px-6 py-4 text-sm text-gray-900">
                         {formatDateDisplay(kpi.measure_date)}
@@ -794,14 +797,14 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
           )}
         </section>
 
-        <hr className="mb-8 border-gray-300" />
+        <hr className="my-10 border-slate-200/80" />
 
       {/* Project Timeline Section */}
         <section className="mb-8">
           <ProjectTimeline projectId={project.id} />
           </section>
 
-        <hr className="mb-8 border-gray-300" />
+        <hr className="my-10 border-slate-200/80" />
 
         {/* Comments section */}
         <section className="mb-8">
@@ -809,5 +812,6 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
         </section>
       </div>
     </div>
+  </div>
   );
 }
