@@ -31,3 +31,7 @@ body {
 .react-datepicker-popper {
   z-index: 100;
 }
+
+.rs-picker-popup {
+  z-index: 1000 !important;
+}

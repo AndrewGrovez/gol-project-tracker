@@ -20,6 +20,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Gol Projects",
   description: "Getting stuff done.",
+  icons: {
+    icon: "/GolLogo.png",
+    shortcut: "/GolLogo.png",
+    apple: "/GolLogo.png",
+  },
 };
 
 export default function RootLayout({
