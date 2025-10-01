@@ -213,13 +213,13 @@ export default function MyTasks() {
   const getTaskStatusIcon = (status: Task["status"]) => {
     switch (status) {
       case "completed":
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
+        return <CheckCircle className="w-4 h-4 text-emerald-500" />;
       case "in_progress":
-        return <Activity className="w-4 h-4 text-blue-500" />;
+        return <Activity className="w-4 h-4 text-[#81bb26]" />;
       case "todo":
-        return <Clock className="w-4 h-4 text-gray-500" />;
+        return <Clock className="w-4 h-4 text-slate-400" />;
       case "blocked":
-        return <AlertTriangle className="w-4 h-4 text-red-500" />;
+        return <AlertTriangle className="w-4 h-4 text-rose-500" />;
       default:
         return null;
     }
@@ -258,6 +258,60 @@ export default function MyTasks() {
   // Filter tasks into To do and Completed sections after sorting
   const todoTasks = sortedTasks.filter((task) => task.status !== "completed");
   const completedTasks = sortedTasks.filter((task) => task.status === "completed");
+
+  const taskStats = useMemo(() => {
+    const open = tasks.filter((task) => task.status !== "completed");
+    const completedCount = tasks.filter((task) => task.status === "completed").length;
+    const blockedCount = tasks.filter((task) => task.status === "blocked").length;
+
+    const upcoming = open
+      .filter((task) => Boolean(task.due_date))
+      .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
+
+    return {
+      openCount: open.length,
+      completedCount,
+      blockedCount,
+      nextDueTask: upcoming.length > 0 ? upcoming[0] : null,
+    };
+  }, [tasks]);
+
+  const nextDueHelper = taskStats.nextDueTask?.project?.name
+    ? `Project · ${taskStats.nextDueTask.project.name}`
+    : "No assignment";
+
+  const highlightCards = [
+    {
+      label: "Active tasks",
+      value: taskStats.openCount,
+      helper: taskStats.openCount ? "In motion" : "You're all caught up",
+      icon: List,
+      iconClasses: "bg-[#81bb26]/15 text-[#09162a]",
+    },
+    {
+      label: "Completed",
+      value: taskStats.completedCount,
+      helper: taskStats.completedCount ? "Marked done" : "Ready for wins",
+      icon: CheckCircle,
+      iconClasses: "bg-emerald-500/15 text-emerald-600",
+    },
+    {
+      label: "Blocked",
+      value: taskStats.blockedCount,
+      helper: taskStats.blockedCount ? "Needs attention" : "Clear runway",
+      icon: AlertTriangle,
+      iconClasses: "bg-amber-100 text-amber-600",
+    },
+    {
+      label: "Next due",
+      value: taskStats.nextDueTask && taskStats.nextDueTask.due_date
+        ? new Date(taskStats.nextDueTask.due_date).toLocaleDateString("en-GB")
+        : "—",
+      helper: taskStats.nextDueTask ? nextDueHelper : "No due dates pending",
+      icon: Clock,
+      iconClasses: "bg-[#09162a]/10 text-[#09162a]",
+    },
+  ];
 
   // Function to handle sorting on header click
   const handleTaskSort = (column: TaskSortColumn) => {
@@ -301,309 +355,363 @@ export default function MyTasks() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="flex flex-col gap-6 mb-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-2xl font-bold">My Tasks</h1>
-          <div className="flex items-center gap-2">
-            <Button
-              variant={viewMode === "table" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setViewMode("table")}
-              className="flex items-center gap-2"
-            >
-              <List className="w-4 h-4" />
-              Table
-            </Button>
-            <Button
-              variant={viewMode === "kanban" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setViewMode("kanban")}
-              className="flex items-center gap-2"
-            >
-              <LayoutGrid className="w-4 h-4" />
-              Kanban
-            </Button>
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50">
+      <div className="pointer-events-none absolute -top-40 -left-32 h-[36rem] w-[36rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(129,187,38,0.28)_0%,_rgba(148,163,184,0.08)_60%,_transparent_100%)] blur-3xl" />
+      <div className="pointer-events-none absolute bottom-[-14rem] right-[-20rem] h-[44rem] w-[44rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(56,189,248,0.22)_0%,_rgba(129,187,38,0.12)_55%,_transparent_100%)] blur-3xl" />
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-12 px-6 py-12">
+        <section className="flex flex-col gap-6">
+          <div className="rounded-3xl border border-white/60 bg-white/85 px-8 py-10 shadow-xl backdrop-blur-xl">
+            <div className="space-y-3">
+              <h1 className="text-3xl font-semibold text-[#09162a]">My Tasks</h1>
+              <p className="text-sm text-slate-600">Everything assigned to you across projects, with quick filters and a kanban view.</p>
+            </div>
           </div>
-        </div>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <Input
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Search tasks"
-            aria-label="Search tasks"
-            className="w-full md:w-72"
-          />
-          <Select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as TaskStatusFilter)}
-            className="w-full md:w-44"
-            aria-label="Filter tasks by status"
-          >
-            <option value="all">All statuses</option>
-            <option value="todo">To Do</option>
-            <option value="in_progress">In Progress</option>
-            <option value="completed">Completed</option>
-            <option value="blocked">Blocked</option>
-          </Select>
-          <Select
-            value={projectFilter}
-            onChange={(event) => setProjectFilter(event.target.value)}
-            className="w-full md:w-48"
-            aria-label="Filter tasks by project"
-          >
-            <option value="all">All projects</option>
-            {projectOptions.map(([id, name]) => (
-              <option key={id} value={id}>
-                {name}
-              </option>
-            ))}
-          </Select>
-        </div>
-      </div>
 
-      {viewMode === "kanban" ? (
-        filteredTasks.length === 0 ? (
-          <p className="text-gray-500">No tasks match your filters.</p>
-        ) : (
-          <KanbanBoard
-            initialData={kanbanData}
-            onTaskMove={handleTaskMove}
-            onTaskUpdate={(updatedTask) => {
-              setTasks((currentTasks) =>
-                currentTasks.map((t) =>
-                  t.id === updatedTask.id ? {...t, ...updatedTask} : t
-                )
+          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+            {highlightCards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <div
+                  key={card.label}
+                  className="flex items-center justify-between rounded-2xl border border-emerald-100/60 bg-white/80 p-4 shadow-sm backdrop-blur"
+                >
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-slate-500">{card.label}</p>
+                    <p className="mt-1 text-2xl font-semibold text-[#09162a]">{card.value}</p>
+                    <p className="mt-1 text-xs text-slate-500">{card.helper}</p>
+                  </div>
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${card.iconClasses}`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                </div>
               );
-            }}
-            tasks={filteredTasks}
-          />
-        )
-      ) : (
-        <>
-          {/* To do tasks section */}
-      <section className="mb-8">
-        <div
-          className="flex items-center gap-2 cursor-pointer mb-4"
-          onClick={() => setTodoOpen(!todoOpen)}
-        >
-          <h2 className="text-xl font-semibold">To do ({todoTasks.length})</h2>
-          {todoOpen ? (
-            <ChevronDown className="w-6 h-6" />
-          ) : (
-            <ChevronRight className="w-6 h-6" />
-          )}
-        </div>
-        {todoOpen &&
-          (todoTasks.length === 0 ? (
-            <p className="text-gray-500">No tasks match your filters.</p>
-          ) : (
-            <div className="border border-[#1c3145]/40 rounded-lg overflow-hidden shadow">
-              <table className="w-full">
-                <thead className="bg-[#1c3145] text-white">
-                  <tr>
-                    <th
-                      className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
-                      onClick={() => handleTaskSort("title")}
-                    >
-                      Task{renderSortArrow("title")}
-                    </th>
-                    <th
-                      className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
-                      onClick={() => handleTaskSort("project")}
-                    >
-                      Project{renderSortArrow("project")}
-                    </th>
-                    <th
-                      className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
-                      onClick={() => handleTaskSort("status")}
-                    >
-                      Status{renderSortArrow("status")}
-                    </th>
-                    <th
-                      className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
-                      onClick={() => handleTaskSort("due_date")}
-                    >
-                      Due{renderSortArrow("due_date")}
-                    </th>
-                    <th className="px-6 py-2 text-right text-sm font-medium">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#1c3145]/40 bg-white">
-                  {todoTasks.map((task) => (
-                    <tr key={task.id} className="hover:bg-[#81bb26]/10">
-                      <td className="px-6 py-3 text-sm text-gray-900 whitespace-normal break-words">
-                        {task.title}
-                      </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm">
-                        {task.project.name}
-                      </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm flex items-center gap-2">
-                        {getTaskStatusIcon(task.status)}
-                        <Select
-                          value={task.status}
-                          className="min-w-[100px] text-xs"
-                          onChange={(e) =>
-                            updateTaskStatus(task.id, e.target.value as Task["status"])
-                          }
-                        >
-                          <option value="todo">To Do</option>
-                          <option value="in_progress">In Progress</option>
-                          <option value="completed">Completed</option>
-                          <option value="blocked">Blocked</option>
-                        </Select>
-                      </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900">
-                        {task.due_date
-                          ? new Date(task.due_date).toLocaleDateString("en-GB")
-                          : "-"}
-                      </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex justify-end items-center gap-2">
-                          <EditTaskDialog
-                            task={task}
-                            onTaskUpdated={(updatedTask) => {
-                              setTasks((currentTasks) =>
-                                currentTasks.map((t) =>
-                                  t.id === updatedTask.id ? {...t, ...updatedTask} : t
-                                )
-                              );
-                            }}
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                            onClick={() => deleteTask(task.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))}
-      </section>
+            })}
+          </div>
+        </section>
 
-      <hr className="mb-8 border-gray-300" />
-
-      {/* Completed tasks section */}
-      <section className="mb-8">
-        <div
-          className="flex items-center gap-2 cursor-pointer mb-4"
-          onClick={() => setCompletedOpen(!completedOpen)}
-        >
-          <h2 className="text-xl font-semibold">
-            Completed tasks ({completedTasks.length})
-          </h2>
-          {completedOpen ? (
-            <ChevronDown className="w-6 h-6" />
-          ) : (
-            <ChevronRight className="w-6 h-6" />
-          )}
-        </div>
-        {completedOpen &&
-          (completedTasks.length === 0 ? (
-            <p className="text-gray-500">No tasks match your filters.</p>
-          ) : (
-            <div className="border border-[#1c3145]/40 rounded-lg overflow-hidden shadow">
-              <table className="w-full">
-                <thead className="bg-[#1c3145] text-white">
-                  <tr>
-                    <th
-                      className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
-                      onClick={() => handleTaskSort("title")}
-                    >
-                      Task{renderSortArrow("title")}
-                    </th>
-                    <th
-                      className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
-                      onClick={() => handleTaskSort("project")}
-                    >
-                      Project{renderSortArrow("project")}
-                    </th>
-                    <th
-                      className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
-                      onClick={() => handleTaskSort("status")}
-                    >
-                      Status{renderSortArrow("status")}
-                    </th>
-                    <th
-                      className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
-                      onClick={() => handleTaskSort("due_date")}
-                    >
-                      Due{renderSortArrow("due_date")}
-                    </th>
-                    <th className="px-6 py-2 text-right text-sm font-medium">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#1c3145]/40 bg-white">
-                  {completedTasks.map((task) => (
-                    <tr key={task.id} className="hover:bg-[#81bb26]/10">
-                      <td className="px-6 py-3 text-sm text-gray-900 whitespace-normal break-words">
-                        {task.title}
-                      </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm">
-                        {task.project.name}
-                      </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm flex items-center gap-2">
-                        {getTaskStatusIcon(task.status)}
-                        <Select
-                          value={task.status}
-                          className="min-w-[100px] text-xs"
-                          onChange={(e) =>
-                            updateTaskStatus(task.id, e.target.value as Task["status"])
-                          }
-                        >
-                          <option value="todo">To Do</option>
-                          <option value="in_progress">In Progress</option>
-                          <option value="completed">Completed</option>
-                          <option value="blocked">Blocked</option>
-                        </Select>
-                      </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900">
-                        {task.due_date
-                          ? new Date(task.due_date).toLocaleDateString("en-GB")
-                          : "-"}
-                      </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex justify-end items-center gap-2">
-                          <EditTaskDialog
-                            task={task}
-                            onTaskUpdated={(updatedTask) => {
-                              setTasks((currentTasks) =>
-                                currentTasks.map((t) =>
-                                  t.id === updatedTask.id ? {...t, ...updatedTask} : t
-                                )
-                              );
-                            }}
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                            onClick={() => deleteTask(task.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <section className="rounded-3xl border border-white/60 bg-white/80 p-8 shadow-xl backdrop-blur-xl">
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold text-[#09162a]">Task workspace</h2>
+                <p className="text-sm text-slate-500">
+                  {filteredTasks.length} task{filteredTasks.length === 1 ? "" : "s"} in view · {projectFilter === "all" ? "All projects" : projectOptions.find(([id]) => id === projectFilter)?.[1] ?? ""}
+                </p>
+              </div>
+              <div className="flex overflow-hidden rounded-lg border border-emerald-100/80 bg-white/80 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("table")}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+                    viewMode === "table"
+                      ? "bg-[#09162a] text-white shadow-inner"
+                      : "text-[#09162a] hover:bg-[#81bb26]/10"
+                  }`}
+                >
+                  <List className="h-4 w-4" />
+                  Table
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("kanban")}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+                    viewMode === "kanban"
+                      ? "bg-[#09162a] text-white shadow-inner"
+                      : "text-[#09162a] hover:bg-[#81bb26]/10"
+                  }`}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  Kanban
+                </button>
+              </div>
             </div>
-          ))}
-      </section>
-        </>
-      )}
+
+            <div className="grid gap-3 md:grid-cols-3">
+              <Input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search tasks"
+                aria-label="Search tasks"
+                className="h-12 rounded-xl border border-emerald-100/70 bg-white/80 text-sm"
+              />
+              <Select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as TaskStatusFilter)}
+                className="h-12 rounded-xl border border-emerald-100/70 bg-white/80 text-sm"
+                aria-label="Filter tasks by status"
+              >
+                <option value="all">All statuses</option>
+                <option value="todo">To Do</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+                <option value="blocked">Blocked</option>
+              </Select>
+              <Select
+                value={projectFilter}
+                onChange={(event) => setProjectFilter(event.target.value)}
+                className="h-12 rounded-xl border border-emerald-100/70 bg-white/80 text-sm"
+                aria-label="Filter tasks by project"
+              >
+                <option value="all">All projects</option>
+                {projectOptions.map(([id, name]) => (
+                  <option key={id} value={id}>
+                    {name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+
+            {viewMode === "kanban" ? (
+              filteredTasks.length === 0 ? (
+                <p className="text-sm text-slate-500">No tasks match your filters.</p>
+              ) : (
+                <div className="rounded-2xl border border-emerald-100/70 bg-white/90 p-4 shadow-sm backdrop-blur-sm">
+                  <KanbanBoard
+                    initialData={kanbanData}
+                    onTaskMove={handleTaskMove}
+                    onTaskUpdate={(updatedTask) => {
+                      setTasks((currentTasks) =>
+                        currentTasks.map((t) =>
+                          t.id === updatedTask.id ? { ...t, ...updatedTask } : t
+                        )
+                      );
+                    }}
+                    tasks={filteredTasks}
+                  />
+                </div>
+              )
+            ) : (
+              <div className="space-y-6">
+                <div className="rounded-2xl border border-emerald-100/70 bg-white/90 p-4 shadow-sm backdrop-blur-sm">
+                  <button
+                    type="button"
+                    onClick={() => setTodoOpen(!todoOpen)}
+                    className="flex w-full items-center justify-between gap-3 text-left"
+                  >
+                    <div>
+                      <h3 className="text-lg font-semibold text-[#09162a]">Active tasks ({todoTasks.length})</h3>
+                      <p className="mt-1 text-xs text-slate-500">Tasks that still need action</p>
+                    </div>
+                    {todoOpen ? (
+                      <ChevronDown className="h-5 w-5 text-slate-500" />
+                    ) : (
+                      <ChevronRight className="h-5 w-5 text-slate-500" />
+                    )}
+                  </button>
+                  {todoOpen ? (
+                    todoTasks.length === 0 ? (
+                      <p className="mt-4 text-sm text-slate-500">No tasks match your filters.</p>
+                    ) : (
+                      <div className="mt-4 border border-emerald-100/70">
+                        <table className="w-full overflow-hidden rounded-2xl">
+                          <thead className="bg-emerald-100 text-emerald-900">
+                            <tr>
+                              <th
+                                className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                                onClick={() => handleTaskSort("title")}
+                              >
+                                Task{renderSortArrow("title")}
+                              </th>
+                              <th
+                                className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                                onClick={() => handleTaskSort("project")}
+                              >
+                                Project{renderSortArrow("project")}
+                              </th>
+                              <th
+                                className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                                onClick={() => handleTaskSort("status")}
+                              >
+                                Status{renderSortArrow("status")}
+                              </th>
+                              <th
+                                className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                                onClick={() => handleTaskSort("due_date")}
+                              >
+                                Due{renderSortArrow("due_date")}
+                              </th>
+                              <th className="px-6 py-2 text-right text-sm font-medium">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-emerald-100 bg-white/95">
+                            {todoTasks.map((task) => (
+                              <tr key={task.id} className="hover:bg-emerald-50/70">
+                                <td className="px-6 py-3 whitespace-normal break-words text-sm text-gray-900">
+                                  {task.title}
+                                </td>
+                                <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-600">
+                                  {task.project.name}
+                                </td>
+                                <td className="px-6 py-3 whitespace-nowrap text-sm">
+                                  <div className="flex items-center gap-2">
+                                    {getTaskStatusIcon(task.status)}
+                                    <Select
+                                      value={task.status}
+                                      className="min-w-[110px] text-xs"
+                                      onChange={(e) =>
+                                        updateTaskStatus(task.id, e.target.value as Task["status"])
+                                      }
+                                    >
+                                      <option value="todo">To Do</option>
+                                      <option value="in_progress">In Progress</option>
+                                      <option value="completed">Completed</option>
+                                      <option value="blocked">Blocked</option>
+                                    </Select>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-700">
+                                  {task.due_date
+                                    ? new Date(task.due_date).toLocaleDateString("en-GB")
+                                    : "-"}
+                                </td>
+                                <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <EditTaskDialog
+                                      task={task}
+                                      onTaskUpdated={(updatedTask) => {
+                                        setTasks((currentTasks) =>
+                                          currentTasks.map((t) =>
+                                            t.id === updatedTask.id ? { ...t, ...updatedTask } : t
+                                          )
+                                        );
+                                      }}
+                                    />
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                                      onClick={() => deleteTask(task.id)}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )
+                  ) : null}
+                </div>
+
+                <div className="rounded-2xl border border-emerald-100/70 bg-white/90 p-4 shadow-sm backdrop-blur-sm">
+                  <button
+                    type="button"
+                    onClick={() => setCompletedOpen(!completedOpen)}
+                    className="flex w-full items-center justify-between gap-3 text-left"
+                  >
+                    <div>
+                      <h3 className="text-lg font-semibold text-[#09162a]">Completed ({completedTasks.length})</h3>
+                      <p className="mt-1 text-xs text-slate-500">Recently signed off tasks</p>
+                    </div>
+                    {completedOpen ? (
+                      <ChevronDown className="h-5 w-5 text-slate-500" />
+                    ) : (
+                      <ChevronRight className="h-5 w-5 text-slate-500" />
+                    )}
+                  </button>
+                  {completedOpen ? (
+                    completedTasks.length === 0 ? (
+                      <p className="mt-4 text-sm text-slate-500">No tasks match your filters.</p>
+                    ) : (
+                      <div className="mt-4 border border-emerald-100/70">
+                        <table className="w-full overflow-hidden rounded-2xl">
+                          <thead className="bg-emerald-100 text-emerald-900">
+                            <tr>
+                              <th
+                                className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                                onClick={() => handleTaskSort("title")}
+                              >
+                                Task{renderSortArrow("title")}
+                              </th>
+                              <th
+                                className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                                onClick={() => handleTaskSort("project")}
+                              >
+                                Project{renderSortArrow("project")}
+                              </th>
+                              <th
+                                className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                                onClick={() => handleTaskSort("status")}
+                              >
+                                Status{renderSortArrow("status")}
+                              </th>
+                              <th
+                                className="px-6 py-2 text-left text-sm font-medium cursor-pointer"
+                                onClick={() => handleTaskSort("due_date")}
+                              >
+                                Completed{renderSortArrow("due_date")}
+                              </th>
+                              <th className="px-6 py-2 text-right text-sm font-medium">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-emerald-100 bg-white/95">
+                            {completedTasks.map((task) => (
+                              <tr key={task.id} className="hover:bg-emerald-50/70">
+                                <td className="px-6 py-3 whitespace-normal break-words text-sm text-gray-900">
+                                  {task.title}
+                                </td>
+                                <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-600">
+                                  {task.project.name}
+                                </td>
+                                <td className="px-6 py-3 whitespace-nowrap text-sm">
+                                  <div className="flex items-center gap-2">
+                                    {getTaskStatusIcon(task.status)}
+                                    <Select
+                                      value={task.status}
+                                      className="min-w-[110px] text-xs"
+                                      onChange={(e) =>
+                                        updateTaskStatus(task.id, e.target.value as Task["status"])
+                                      }
+                                    >
+                                      <option value="todo">To Do</option>
+                                      <option value="in_progress">In Progress</option>
+                                      <option value="completed">Completed</option>
+                                      <option value="blocked">Blocked</option>
+                                    </Select>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-700">
+                                  {task.due_date
+                                    ? new Date(task.due_date).toLocaleDateString("en-GB")
+                                    : "-"}
+                                </td>
+                                <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <EditTaskDialog
+                                      task={task}
+                                      onTaskUpdated={(updatedTask) => {
+                                        setTasks((currentTasks) =>
+                                          currentTasks.map((t) =>
+                                            t.id === updatedTask.id ? { ...t, ...updatedTask } : t
+                                          )
+                                        );
+                                      }}
+                                    />
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                                      onClick={() => deleteTask(task.id)}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )
+                  ) : null}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
