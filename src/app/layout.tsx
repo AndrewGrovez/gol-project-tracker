@@ -6,6 +6,7 @@ import RefreshHandler from "@/components/RefreshHandler";
 import MainContent from "@/components/MainContent";
 import { SidebarProvider } from "@/contexts/SidebarContext";
 import "./globals.css";
+import "rsuite/dist/rsuite.min.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
