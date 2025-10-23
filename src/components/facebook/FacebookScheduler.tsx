@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { CheckSquare, Instagram, Loader2, Plus, RefreshCw, Trash2, Upload } from "lucide-react";
+import { Loader2, Plus, RefreshCw, Trash2, Upload } from "lucide-react";
 import "react-datepicker/dist/react-datepicker.css";
 
 interface FacebookScheduledPost {
@@ -19,18 +19,7 @@ interface FacebookScheduledPost {
   status?: string;
 }
 
-interface InstagramScheduledPost {
-  id: string;
-  caption?: string;
-  media_type?: string;
-  media_url?: string;
-  permalink?: string;
-  scheduled_publish_time?: number;
-  status?: string;
-}
-
 interface ScheduleResult {
-  platform: "facebook" | "instagram";
   scheduledTime: string;
   externalId?: string;
   error?: string;
@@ -88,14 +77,9 @@ export default function FacebookScheduler() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  const [platforms, setPlatforms] = useState({ facebook: true, instagram: false });
-
   const [facebookPosts, setFacebookPosts] = useState<FacebookScheduledPost[]>([]);
-  const [instagramPosts, setInstagramPosts] = useState<InstagramScheduledPost[]>([]);
   const [isFetchingFacebook, setIsFetchingFacebook] = useState(false);
-  const [isFetchingInstagram, setIsFetchingInstagram] = useState(false);
   const [facebookError, setFacebookError] = useState<string | null>(null);
-  const [instagramError, setInstagramError] = useState<string | null>(null);
 
   const resetForm = useCallback(() => {
     setMessage("");
@@ -110,36 +94,25 @@ export default function FacebookScheduler() {
 
   const fetchScheduledPosts = useCallback(async () => {
     setIsFetchingFacebook(true);
-    setIsFetchingInstagram(true);
     setFacebookError(null);
-    setInstagramError(null);
     try {
-      const [facebookResponse, instagramResponse] = await Promise.all([
-        fetch("/api/facebook/scheduled-posts", { method: "GET", cache: "no-store" }),
-        fetch("/api/instagram/scheduled-posts", { method: "GET", cache: "no-store" }),
-      ]);
+      const facebookResponse = await fetch("/api/facebook/scheduled-posts", {
+        method: "GET",
+        cache: "no-store",
+      });
 
       const facebookData = await facebookResponse.json();
-      const instagramData = await instagramResponse.json();
 
       if (!facebookResponse.ok) {
         setFacebookError(facebookData?.error || "Unable to load Facebook scheduled posts.");
       } else {
         setFacebookPosts(Array.isArray(facebookData?.data) ? facebookData.data : []);
       }
-
-      if (!instagramResponse.ok) {
-        setInstagramError(instagramData?.error || "Unable to load Instagram scheduled posts.");
-      } else {
-        setInstagramPosts(Array.isArray(instagramData?.data) ? instagramData.data : []);
-      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "An unexpected error occurred.";
       setFacebookError(message);
-      setInstagramError(message);
     } finally {
       setIsFetchingFacebook(false);
-      setIsFetchingInstagram(false);
     }
   }, []);
 
@@ -170,15 +143,6 @@ export default function FacebookScheduler() {
     event.preventDefault();
     setFeedback(null);
 
-    const selectedPlatforms = Object.entries(platforms)
-      .filter(([, enabled]) => enabled)
-      .map(([platform]) => platform);
-
-    if (selectedPlatforms.length === 0) {
-      setFeedback({ type: "error", message: "Select at least one platform to schedule." });
-      return;
-    }
-
     if (!message.trim()) {
       setFeedback({ type: "error", message: "Please enter a message for the post." });
       return;
@@ -186,11 +150,6 @@ export default function FacebookScheduler() {
 
     if (validTimes.length === 0) {
       setFeedback({ type: "error", message: "Please select at least one future date and time." });
-      return;
-    }
-
-    if (platforms.instagram && !imageFile) {
-      setFeedback({ type: "error", message: "Instagram scheduling requires an image upload." });
       return;
     }
 
@@ -205,7 +164,6 @@ export default function FacebookScheduler() {
       if (imageFile) {
         formData.append("image", imageFile);
       }
-      formData.append("platforms", JSON.stringify(selectedPlatforms));
 
       const response = await fetch("/api/facebook/schedule", {
         method: "POST",
@@ -217,35 +175,31 @@ export default function FacebookScheduler() {
         const errors: string[] = Array.isArray(payload?.results)
           ? (payload.results as ScheduleResult[])
               .filter((result) => result.error)
-              .map((result) =>
-                `${result.platform.toUpperCase()} · ${new Date(result.scheduledTime).toLocaleString()} — ${result.error}`
+              .map(
+                (result) =>
+                  `${new Date(result.scheduledTime).toLocaleString()} — ${result.error}`
               )
           : [];
-        const errorMessage = errors.length > 0
-          ? `Some schedules failed:\n${errors.join("\n")}`
-          : payload?.error || "Unable to schedule posts.";
+        const errorMessage =
+          errors.length > 0
+            ? `Some schedules failed:\n${errors.join("\n")}`
+            : payload?.error || "Unable to schedule posts.";
         setFeedback({ type: "error", message: errorMessage });
         return;
       }
 
-      const successful = Array.isArray(payload?.results)
-        ? (payload.results as ScheduleResult[]).filter((result) => !result.error)
+      const successfulTimes = Array.isArray(payload?.results)
+        ? (payload.results as ScheduleResult[])
+            .filter((result) => !result.error)
+            .map((result) => new Date(result.scheduledTime).toLocaleString())
         : [];
-
-      const successSummary = successful.reduce<Record<string, number>>((accumulator, result) => {
-        accumulator[result.platform] = (accumulator[result.platform] || 0) + 1;
-        return accumulator;
-      }, {});
-
-      const successMessage = Object.entries(successSummary)
-        .map(([platform, count]) => `${platform.toUpperCase()}: ${count}`)
-        .join(" · ");
 
       setFeedback({
         type: "success",
-        message: successSummary && Object.keys(successSummary).length > 0
-          ? `Scheduled successfully — ${successMessage}`
-          : "Request completed.",
+        message:
+          successfulTimes.length > 0
+            ? `Scheduled successfully — ${successfulTimes.join(" · ")}`
+            : "Request completed.",
       });
       resetForm();
       fetchScheduledPosts();
@@ -271,39 +225,10 @@ export default function FacebookScheduler() {
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <h2 className="text-lg font-semibold text-slate-900">Select platforms</h2>
-              <p className="text-sm text-slate-600">Choose where your scheduled post should be published.</p>
-              <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center">
-                <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={platforms.facebook}
-                    onChange={(event) =>
-                      setPlatforms((current) => ({ ...current, facebook: event.target.checked }))
-                    }
-                    className="h-4 w-4"
-                  />
-                  <span className="flex items-center gap-1">
-                    <CheckSquare className="h-4 w-4" /> Facebook Page
-                  </span>
-                </label>
-                <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={platforms.instagram}
-                    onChange={(event) =>
-                      setPlatforms((current) => ({ ...current, instagram: event.target.checked }))
-                    }
-                    className="h-4 w-4"
-                  />
-                  <span className="flex items-center gap-1">
-                    <Instagram className="h-4 w-4" /> Instagram Business Account
-                  </span>
-                  <span className="text-xs font-normal text-slate-500">
-                    Requires an image upload
-                  </span>
-                </label>
-              </div>
+              <h2 className="text-lg font-semibold text-slate-900">Post details</h2>
+              <p className="text-sm text-slate-600">
+                Craft your Facebook Page update and choose when it should go live (Facebook supports scheduling up to 75 days ahead).
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -424,18 +349,17 @@ export default function FacebookScheduler() {
             <div>
               <h2 className="text-xl font-semibold text-slate-900">Scheduled posts</h2>
               <p className="text-sm text-slate-600">
-                Latest 50 scheduled posts pulled directly from Facebook and Instagram. Refresh after scheduling to
-                view updates.
+                Latest 50 scheduled posts pulled directly from Facebook. Refresh after scheduling to view updates.
               </p>
             </div>
             <Button
               type="button"
               variant="outline"
               onClick={fetchScheduledPosts}
-              disabled={isFetchingFacebook || isFetchingInstagram}
+              disabled={isFetchingFacebook}
               className="flex items-center gap-2"
             >
-              {isFetchingFacebook || isFetchingInstagram ? (
+              {isFetchingFacebook ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <RefreshCw className="h-4 w-4" />
@@ -444,7 +368,7 @@ export default function FacebookScheduler() {
             </Button>
           </div>
 
-          <div className="space-y-8">
+          <div>
             <section>
               <h3 className="text-lg font-semibold text-slate-900">Facebook Page</h3>
               {facebookError ? (
@@ -502,86 +426,6 @@ export default function FacebookScheduler() {
                   })}
                   </tbody>
                 </table>
-                </div>
-              ) : null}
-            </section>
-
-            <section>
-              <h3 className="text-lg font-semibold text-slate-900">Instagram Business</h3>
-              {instagramError ? (
-                <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                  {instagramError}
-                </div>
-              ) : null}
-
-              {!instagramError && isFetchingInstagram ? (
-                <div className="mt-3 flex items-center gap-2 text-sm text-slate-600">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Loading Instagram scheduled posts...
-                </div>
-              ) : null}
-
-              {!isFetchingInstagram && !instagramError && instagramPosts.length === 0 ? (
-                <p className="mt-3 text-sm text-slate-600">No Instagram scheduled posts found.</p>
-              ) : null}
-
-              {!isFetchingInstagram && !instagramError && instagramPosts.length > 0 ? (
-                <div className="mt-4 overflow-x-auto">
-                  <table className="min-w-full divide-y divide-slate-200 text-sm">
-                    <thead className="bg-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                      <tr>
-                        <th className="px-4 py-3">Caption</th>
-                        <th className="px-4 py-3">Scheduled for</th>
-                        <th className="px-4 py-3">Media</th>
-                        <th className="px-4 py-3">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 bg-white">
-                      {instagramPosts.map((post) => {
-                        const scheduledDate = post.scheduled_publish_time
-                          ? new Date(post.scheduled_publish_time * 1000)
-                          : null;
-
-                        return (
-                          <tr key={post.id} className="hover:bg-slate-50">
-                            <td className="max-w-[280px] px-4 py-3 align-top">
-                              <p className="whitespace-pre-wrap text-slate-800">
-                                {post.caption?.trim() || "—"}
-                              </p>
-                            </td>
-                            <td className="px-4 py-3 align-top text-slate-700">
-                              {scheduledDate ? format(scheduledDate, "dd MMM yyyy HH:mm") : "—"}
-                            </td>
-                            <td className="px-4 py-3 align-top text-slate-700">
-                              {post.media_url ? (
-                                <a
-                                  href={post.media_url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-slate-700 underline"
-                                >
-                                  View
-                                </a>
-                              ) : post.permalink ? (
-                                <a
-                                  href={post.permalink}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-slate-700 underline"
-                                >
-                                  Permalink
-                                </a>
-                              ) : (
-                                "—"
-                              )}
-                            </td>
-                            <td className="px-4 py-3 align-top text-slate-700">
-                              {post.status ? post.status.replace(/_/g, " ") : "—"}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
                 </div>
               ) : null}
             </section>

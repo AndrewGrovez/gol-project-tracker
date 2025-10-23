@@ -1,585 +1,590 @@
 "use client";
 
-import React, { useState } from 'react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
-  ResponsiveContainer, LineChart, Line 
-} from 'recharts';
+import React, { useMemo } from "react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  BarChart,
+  Bar,
+  ResponsiveContainer,
+  ReferenceLine,
+  LabelList,
+  Cell,
+} from "recharts";
 
-interface TooltipPayload {
-  name: string;
-  value: number;
-}
+/**
+ * Churn Dashboard – Hard‑coded data (Next.js App Router)
+ * -----------------------------------------------------
+ * Drop this file at:  app/churn/page.tsx
+ * Deps:  npm i recharts
+ * Styling assumes Tailwind CSS is available. If not, replace classNames with your CSS.
+ * Brand colours: #81bb26 (accent), #09162a (ink)
+ */
 
-interface CustomTooltipProps {
-  active?: boolean;
-  payload?: TooltipPayload[];
-  label?: string;
-}
-
-// Define TypeScript interfaces
-interface ChurnData {
-  league: string;
-  shortLeague?: string;
-  day: string;
-  format: string;
-  date: string;
-  month: string;
-  year: number;
-  totalTeams: number;
-  teamsLost: number;
-  churnRate: number;
-  season?: string;
-  seasonNumber?: number;
-  isLatestSeason?: boolean;
-  prevSeasonChurn?: number;
-  churnChange?: number;
-}
-
-interface LeagueChurnSummary {
-  league: string;
-  shortLeague: string;
-  avgChurn: number;
-  totalEntries: number;
-  day: string;
-  format: string;
-  totalTeams: number;
-  year: number;
-  month: string;
-}
-
-interface DayChurnSummary {
-  day: string;
-  avgChurn: number;
-  latestAvgChurn: number;
-  totalEntries: number;
-  totalTeams: number;
-}
-
-interface FormatChurnSummary {
-  format: string;
-  avgChurn: number;
-  latestAvgChurn: number;
-  totalEntries: number;
-  totalTeams: number;
-}
-
-interface SeasonChurnSummary {
-  season: string;
-  avgChurn: number;
-  totalEntries: number;
-}
-
-interface YearChurnSummary {
-  year: number;
-  avgChurn: number;
-  totalSeasons: number;
-  totalTeams: number;
-}
-
-// Raw data – you can replace this with an API call in a real implementation
-const rawData = `League/Start Date	Total Teams	Teams Lost	Churn Rate (%)
-Monday 5s - March 24 60 7 11.67
-Monday 5s - June 24 62 7 11.29
-Monday 5s - September 24 64 6 9.38
-Monday 7s - June 23 11 3 27.27
-Monday 7s - October 23 10 2 20.00
-Monday 7s - March 24 10 2 20.00
-Monday 7s - July 24 10 1 10.00
-Tuesday 5s - August 23 32 9 28.13
-Tuesday 5s - November 23 36 12 33.33
-Tuesday 5s - March 24 32 12 37.50
-Tuesday 5s - July 24 30 3 10.00
-Tuesday Works - June 23 12 2 16.67
-Tuesday Works - September 23 12 3 25.00
-Tuesday Works - January 24 12 2 16.67
-Tuesday Works - May 24 12 5 41.67
-Tuesday Works - August 24 8 0 0.00
-Wednesday 5s - July 23 30 3 10.00
-Wednesday 5s - October 23 32 7 21.88
-Wednesday 5s - February 24 30 4 13.33
-Wednesday 5s - May 24 30 10 33.33
-Wednesday 5s - September 24 28 6 21.43
-Wednesday Works - August 23 15 5 33.33
-Wednesday Works - December 23 14 5 35.71
-Wednesday Works - March 24 12 4 33.33
-Wednesday Works - July 24 8 2 25.00
-Wednesday Works - October 24 12 2 16.67
-Thursday 5s - August 23 18 5 27.78
-Thursday 5s - November 23 25 9 36.00
-Thursday 5s - March 24 20 2 10.00
-Thursday 5s - June 24 22 8 36.36
-Thursday 5s - October 24 20 3 15.00
-Thursday Works - September 23 6 3 50.00
-Thursday Works - November 23 12 2 16.67
-Thursday Works - March 24 14 4 28.57
-Thursday Works - June 24 12 5 41.67
-Thursday Works - October 24 11 1 9.09
-Sunday 5s - September 23 16 2 12.50
-Sunday 5s - January 24 22 2 9.09
-Sunday 5s - April 24 22 7 31.82
-Sunday 5s - July 24 18 3 16.67`;
-
-// Custom tooltip component
-const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, label }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white p-2 border border-gray-300 rounded shadow">
-        <p className="font-bold">{label}</p>
-        {payload.map((entry: TooltipPayload, index: number) => (
-          <p key={index}>
-            {entry.name}: {entry.value}{entry.name.includes('Churn') ? '%' : ''}
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
+// ----------------------
+// Brand
+// ----------------------
+const BRAND = {
+  ink: "#0b1220",
+  green: "#8CD45C",
+  blue: "#6BD3FF",
+  grid: "rgba(255,255,255,0.16)",
+  grey: "rgba(255,255,255,0.55)",
+  frostedBg: "rgba(255, 255, 255, 0.12)",
+  frostedBorder: "rgba(255, 255, 255, 0.28)",
+  positive: "rgba(255,255,255,0.85)",
 };
 
-const ChurnAnalysisPage: React.FC = () => {
-  const [viewType, setViewType] = useState<string>('byLeague');
+// ----------------------
+// Types
+// ----------------------
+type NormRow = {
+  day_of_week: "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Sunday";
+  format: "5s" | "7s" | "Works";
+  month: string;
+  year: number;
+  season_key: string;
+  season_date: string; // YYYY-MM-DD
+  total_teams: number;
+  teams_lost: number;
+  churn_pct: number;
+  segment: string; // e.g., "Monday 5S"
+  season_index: number;
+};
 
-  // Process the raw data
-  const processData = (): ChurnData[] => {
-    const lines = rawData.split('\n').slice(1);
-    const data: ChurnData[] = [];
+// ----------------------
+// Hard‑coded datasets (derived from your CSV)
+// ----------------------
+// Normalised seasons (47 rows)
+const NORM: NormRow[] = [
+  { day_of_week: "Monday", format: "5s", month: "March", year: 2024, season_key: "Mon-5s-2024-03", season_date: "2024-03-01", total_teams: 60, teams_lost: 7, churn_pct: 11.7, segment: "Monday 5S", season_index: 1 },
+  { day_of_week: "Monday", format: "5s", month: "June", year: 2024, season_key: "Mon-5s-2024-06", season_date: "2024-06-01", total_teams: 62, teams_lost: 7, churn_pct: 11.3, segment: "Monday 5S", season_index: 2 },
+  { day_of_week: "Monday", format: "5s", month: "September", year: 2024, season_key: "Mon-5s-2024-09", season_date: "2024-09-01", total_teams: 64, teams_lost: 6, churn_pct: 9.4, segment: "Monday 5S", season_index: 3 },
+  { day_of_week: "Monday", format: "5s", month: "January", year: 2025, season_key: "Mon-5s-2025-01", season_date: "2025-01-01", total_teams: 68, teams_lost: 9, churn_pct: 13.2, segment: "Monday 5S", season_index: 4 },
+  { day_of_week: "Monday", format: "5s", month: "May", year: 2025, season_key: "Mon-5s-2025-05", season_date: "2025-05-01", total_teams: 72, teams_lost: 15, churn_pct: 20.8, segment: "Monday 5S", season_index: 5 },
 
-    // Maps for month and season info
-    const monthMap: Record<string, number> = {
-      'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5, 'June': 6,
-      'July': 7, 'August': 8, 'September': 9, 'October': 10, 'November': 11, 'December': 12
-    };
+  { day_of_week: "Monday", format: "7s", month: "June", year: 2023, season_key: "Mon-7s-2023-06", season_date: "2023-06-01", total_teams: 11, teams_lost: 3, churn_pct: 27.3, segment: "Monday 7S", season_index: 1 },
+  { day_of_week: "Monday", format: "7s", month: "October", year: 2023, season_key: "Mon-7s-2023-10", season_date: "2023-10-01", total_teams: 10, teams_lost: 2, churn_pct: 20.0, segment: "Monday 7S", season_index: 2 },
+  { day_of_week: "Monday", format: "7s", month: "March", year: 2024, season_key: "Mon-7s-2024-03", season_date: "2024-03-01", total_teams: 10, teams_lost: 2, churn_pct: 20.0, segment: "Monday 7S", season_index: 3 },
+  { day_of_week: "Monday", format: "7s", month: "July", year: 2024, season_key: "Mon-7s-2024-07", season_date: "2024-07-01", total_teams: 10, teams_lost: 1, churn_pct: 10.0, segment: "Monday 7S", season_index: 4 },
+  { day_of_week: "Monday", format: "7s", month: "November", year: 2024, season_key: "Mon-7s-2024-11", season_date: "2024-11-01", total_teams: 10, teams_lost: 4, churn_pct: 40.0, segment: "Monday 7S", season_index: 5 },
+  { day_of_week: "Monday", format: "7s", month: "April", year: 2025, season_key: "Mon-7s-2025-04", season_date: "2025-04-01", total_teams: 10, teams_lost: 3, churn_pct: 30.0, segment: "Monday 7S", season_index: 6 },
 
-    const seasonMap: Record<string, string> = {
-      'December': 'Winter', 'January': 'Winter', 'February': 'Winter',
-      'March': 'Spring', 'April': 'Spring', 'May': 'Spring',
-      'June': 'Summer', 'July': 'Summer', 'August': 'Summer',
-      'September': 'Autumn', 'October': 'Autumn', 'November': 'Autumn'
-    };
+  { day_of_week: "Tuesday", format: "5s", month: "August", year: 2023, season_key: "Tue-5s-2023-08", season_date: "2023-08-01", total_teams: 32, teams_lost: 9, churn_pct: 28.1, segment: "Tuesday 5S", season_index: 1 },
+  { day_of_week: "Tuesday", format: "5s", month: "November", year: 2023, season_key: "Tue-5s-2023-11", season_date: "2023-11-01", total_teams: 37, teams_lost: 16, churn_pct: 43.2, segment: "Tuesday 5S", season_index: 2 },
+  { day_of_week: "Tuesday", format: "5s", month: "February", year: 2024, season_key: "Tue-5s-2024-02", season_date: "2024-02-01", total_teams: 40, teams_lost: 18, churn_pct: 45.0, segment: "Tuesday 5S", season_index: 3 },
+  { day_of_week: "Tuesday", format: "5s", month: "July", year: 2024, season_key: "Tue-5s-2024-07", season_date: "2024-07-01", total_teams: 40, teams_lost: 4, churn_pct: 10.0, segment: "Tuesday 5S", season_index: 4 },
+  { day_of_week: "Tuesday", format: "5s", month: "October", year: 2024, season_key: "Tue-5s-2024-10", season_date: "2024-10-01", total_teams: 40, teams_lost: 10, churn_pct: 25.0, segment: "Tuesday 5S", season_index: 5 },
+  { day_of_week: "Tuesday", format: "5s", month: "March", year: 2025, season_key: "Tue-5s-2025-03", season_date: "2025-03-01", total_teams: 40, teams_lost: 20, churn_pct: 50.0, segment: "Tuesday 5S", season_index: 6 },
+  { day_of_week: "Tuesday", format: "5s", month: "June", year: 2025, season_key: "Tue-5s-2025-06", season_date: "2025-06-01", total_teams: 37, teams_lost: 5, churn_pct: 13.5, segment: "Tuesday 5S", season_index: 7 },
 
-    const dayAbbrev: Record<string, string> = {
-      "Monday": "Mon",
-      "Tuesday": "Tue",
-      "Wednesday": "Wed",
-      "Thursday": "Thu",
-      "Friday": "Fri",
-      "Saturday": "Sat",
-      "Sunday": "Sun"
-    };
+  { day_of_week: "Wednesday", format: "5s", month: "August", year: 2023, season_key: "Wed-5s-2023-08", season_date: "2023-08-01", total_teams: 36, teams_lost: 6, churn_pct: 16.7, segment: "Wednesday 5S", season_index: 1 },
+  { day_of_week: "Wednesday", format: "5s", month: "October", year: 2023, season_key: "Wed-5s-2023-10", season_date: "2023-10-01", total_teams: 30, teams_lost: 12, churn_pct: 40.0, segment: "Wednesday 5S", season_index: 2 },
+  { day_of_week: "Wednesday", format: "5s", month: "February", year: 2024, season_key: "Wed-5s-2024-02", season_date: "2024-02-01", total_teams: 34, teams_lost: 11, churn_pct: 32.4, segment: "Wednesday 5S", season_index: 3 },
+  { day_of_week: "Wednesday", format: "5s", month: "May", year: 2024, season_key: "Wed-5s-2024-05", season_date: "2024-05-01", total_teams: 30, teams_lost: 16, churn_pct: 53.3, segment: "Wednesday 5S", season_index: 4 },
+  { day_of_week: "Wednesday", format: "5s", month: "September", year: 2024, season_key: "Wed-5s-2024-09", season_date: "2024-09-01", total_teams: 28, teams_lost: 10, churn_pct: 35.7, segment: "Wednesday 5S", season_index: 5 },
+  { day_of_week: "Wednesday", format: "5s", month: "December", year: 2024, season_key: "Wed-5s-2024-12", season_date: "2024-12-01", total_teams: 34, teams_lost: 8, churn_pct: 23.5, segment: "Wednesday 5S", season_index: 6 },
+  { day_of_week: "Wednesday", format: "5s", month: "April", year: 2025, season_key: "Wed-5s-2025-04", season_date: "2025-04-01", total_teams: 30, teams_lost: 9, churn_pct: 30.0, segment: "Wednesday 5S", season_index: 7 },
 
-    const monthAbbrev: Record<string, string> = {
-      "January": "Jan",
-      "February": "Feb",
-      "March": "Mar",
-      "April": "Apr",
-      "May": "May",
-      "June": "Jun",
-      "July": "Jul",
-      "August": "Aug",
-      "September": "Sep",
-      "October": "Oct",
-      "November": "Nov",
-      "December": "Dec"
-    };
+  { day_of_week: "Wednesday", format: "Works", month: "January", year: 2024, season_key: "Wed-Works-2024-01", season_date: "2024-01-01", total_teams: 10, teams_lost: 4, churn_pct: 40.0, segment: "Wednesday Works", season_index: 1 },
+  { day_of_week: "Wednesday", format: "Works", month: "April", year: 2024, season_key: "Wed-Works-2024-04", season_date: "2024-04-01", total_teams: 10, teams_lost: 7, churn_pct: 70.0, segment: "Wednesday Works", season_index: 2 },
+  { day_of_week: "Wednesday", format: "Works", month: "July", year: 2024, season_key: "Wed-Works-2024-07", season_date: "2024-07-01", total_teams: 12, teams_lost: 6, churn_pct: 50.0, segment: "Wednesday Works", season_index: 3 },
+  { day_of_week: "Wednesday", format: "Works", month: "October", year: 2024, season_key: "Wed-Works-2024-10", season_date: "2024-10-01", total_teams: 12, teams_lost: 6, churn_pct: 50.0, segment: "Wednesday Works", season_index: 4 },
+  { day_of_week: "Wednesday", format: "Works", month: "February", year: 2025, season_key: "Wed-Works-2025-02", season_date: "2025-02-01", total_teams: 10, teams_lost: 1, churn_pct: 10.0, segment: "Wednesday Works", season_index: 5 },
+  { day_of_week: "Wednesday", format: "Works", month: "April", year: 2025, season_key: "Wed-Works-2025-04", season_date: "2025-04-01", total_teams: 10, teams_lost: 3, churn_pct: 30.0, segment: "Wednesday Works", season_index: 6 },
+  { day_of_week: "Wednesday", format: "Works", month: "July", year: 2025, season_key: "Wed-Works-2025-07", season_date: "2025-07-01", total_teams: 10, teams_lost: 5, churn_pct: 50.0, segment: "Wednesday Works", season_index: 7 },
+  { day_of_week: "Wednesday", format: "Works", month: "October", year: 2025, season_key: "Wed-Works-2025-10", season_date: "2025-10-01", total_teams: 10, teams_lost: 4, churn_pct: 40.0, segment: "Wednesday Works", season_index: 8 },
 
-    // Group by league string (each group is unique per start date)
-    const leagueSequences: Record<string, ChurnData[]> = {};
+  { day_of_week: "Thursday", format: "5s", month: "August", year: 2023, season_key: "Thu-5s-2023-08", season_date: "2023-08-01", total_teams: 30, teams_lost: 7, churn_pct: 23.3, segment: "Thursday 5S", season_index: 1 },
+  { day_of_week: "Thursday", format: "5s", month: "November", year: 2023, season_key: "Thu-5s-2023-11", season_date: "2023-11-01", total_teams: 22, teams_lost: 8, churn_pct: 36.4, segment: "Thursday 5S", season_index: 2 },
+  { day_of_week: "Thursday", format: "5s", month: "March", year: 2024, season_key: "Thu-5s-2024-03", season_date: "2024-03-01", total_teams: 19, teams_lost: 4, churn_pct: 21.1, segment: "Thursday 5S", season_index: 3 },
+  { day_of_week: "Thursday", format: "5s", month: "June", year: 2024, season_key: "Thu-5s-2024-06", season_date: "2024-06-01", total_teams: 32, teams_lost: 12, churn_pct: 37.5, segment: "Thursday 5S", season_index: 4 },
+  { day_of_week: "Thursday", format: "5s", month: "October", year: 2024, season_key: "Thu-5s-2024-10", season_date: "2024-10-01", total_teams: 28, teams_lost: 10, churn_pct: 35.7, segment: "Thursday 5S", season_index: 5 },
+  { day_of_week: "Thursday", format: "5s", month: "January", year: 2025, season_key: "Thu-5s-2025-01", season_date: "2025-01-01", total_teams: 34, teams_lost: 9, churn_pct: 26.5, segment: "Thursday 5S", season_index: 6 },
+  { day_of_week: "Thursday", format: "5s", month: "May", year: 2025, season_key: "Thu-5s-2025-05", season_date: "2025-05-01", total_teams: 32, teams_lost: 8, churn_pct: 25.0, segment: "Thursday 5S", season_index: 7 },
 
-    lines.forEach(line => {
-      if (!line.trim()) return;
-      const parts = line.trim().split(' ');
-      if (parts.length < 8) return; // Expect at least 8 tokens
-      const day = parts[0];
-      const format = parts[1];
-      const monthStr = parts[3];
-      const yearStr = parts[4];
-      const year = parseInt(yearStr);
-      if (isNaN(year)) return;
+  { day_of_week: "Sunday", format: "5s", month: "January", year: 2024, season_key: "Sun-5s-2024-01", season_date: "2024-01-01", total_teams: 23, teams_lost: 4, churn_pct: 17.4, segment: "Sunday 5S", season_index: 1 },
+  { day_of_week: "Sunday", format: "5s", month: "April", year: 2024, season_key: "Sun-5s-2024-04", season_date: "2024-04-01", total_teams: 12, teams_lost: 8, churn_pct: 66.7, segment: "Sunday 5S", season_index: 2 },
+  { day_of_week: "Sunday", format: "5s", month: "July", year: 2024, season_key: "Sun-5s-2024-07", season_date: "2024-07-01", total_teams: 14, teams_lost: 2, churn_pct: 14.3, segment: "Sunday 5S", season_index: 3 },
+  { day_of_week: "Sunday", format: "5s", month: "October", year: 2024, season_key: "Sun-5s-2024-10", season_date: "2024-10-01", total_teams: 13, teams_lost: 3, churn_pct: 23.1, segment: "Sunday 5S", season_index: 4 },
+  { day_of_week: "Sunday", format: "5s", month: "January", year: 2025, season_key: "Sun-5s-2025-01", season_date: "2025-01-01", total_teams: 18, teams_lost: 6, churn_pct: 33.3, segment: "Sunday 5S", season_index: 5 },
+  { day_of_week: "Sunday", format: "5s", month: "March", year: 2025, season_key: "Sun-5s-2025-03", season_date: "2025-03-01", total_teams: 18, teams_lost: 4, churn_pct: 22.2, segment: "Sunday 5S", season_index: 6 },
+  { day_of_week: "Sunday", format: "5s", month: "June", year: 2025, season_key: "Sun-5s-2025-06", season_date: "2025-06-01", total_teams: 18, teams_lost: 2, churn_pct: 11.1, segment: "Sunday 5S", season_index: 7 },
+];
 
-      const leagueType = parts.slice(0, 5).join(' ');
-      const totalTeams = parseInt(parts[5]);
-      const teamsLost = parseInt(parts[6]);
-      const churnRate = parseFloat(parts[7]);
+// QA rows (47)
+// Precomputed aggregates
+const OVERALL_WEIGHTED = 21.1; // %
+const FORMAT_WEIGHTED = [
+  { format: "5s", weighted_churn_pct: 19.9 },
+  { format: "7s", weighted_churn_pct: 24.6 },
+  { format: "Works", weighted_churn_pct: 31.9 },
+];
+const FIVE_BY_DAY = [
+  { day_of_week: "Monday", weighted_churn_pct: 13.5 },
+  { day_of_week: "Sunday", weighted_churn_pct: 19.7 },
+  { day_of_week: "Wednesday", weighted_churn_pct: 20.2 },
+  { day_of_week: "Tuesday", weighted_churn_pct: 24.5 },
+  { day_of_week: "Thursday", weighted_churn_pct: 25.9 },
+];
+const LATEST = [
+  { segment: "Monday 5S", current_churn_pct: 20.8, delta_pp_vs_prev: 7.6, total_teams_latest: 72 },
+  { segment: "Monday 7S", current_churn_pct: 30.0, delta_pp_vs_prev: -10.0, total_teams_latest: 10 },
+  { segment: "Sunday 5S", current_churn_pct: 22.2, delta_pp_vs_prev: -11.1, total_teams_latest: 18 },
+  { segment: "Thursday 5S", current_churn_pct: 25.0, delta_pp_vs_prev: -2.6, total_teams_latest: 32 },
+  { segment: "Tuesday 5S", current_churn_pct: 13.5, delta_pp_vs_prev: -9.8, total_teams_latest: 37 },
+  { segment: "Wednesday 5S", current_churn_pct: 30.0, delta_pp_vs_prev: 19.3, total_teams_latest: 30 },
+  { segment: "Wednesday Works", current_churn_pct: 40.0, delta_pp_vs_prev: 20.0, total_teams_latest: 10 },
+];
+const SEGMENT_TRENDS = [
+  { segment: "Monday 5S", trend_slope_pp_per_season: 2.01 },
+  { segment: "Monday 7S", trend_slope_pp_per_season: 1.81 },
+  { segment: "Sunday 5S", trend_slope_pp_per_season: 2.03 },
+  { segment: "Thursday 5S", trend_slope_pp_per_season: -0.72 },
+  { segment: "Tuesday 5S", trend_slope_pp_per_season: -2.73 },
+  { segment: "Wednesday 5S", trend_slope_pp_per_season: 1.63 },
+  { segment: "Wednesday Works", trend_slope_pp_per_season: -0.01 },
+];
+const MONTH_MEANS = [
+  { month: "January", churn_pct: 16.6 },
+  { month: "February", churn_pct: 29.8 },
+  { month: "March", churn_pct: 24.2 },
+  { month: "April", churn_pct: 28.0 },
+  { month: "May", churn_pct: 26.4 },
+  { month: "June", churn_pct: 22.1 },
+  { month: "July", churn_pct: 18.6 },
+  { month: "August", churn_pct: 29.7 },
+  { month: "September", churn_pct: 14.4 },
+  { month: "October", churn_pct: 19.7 },
+  { month: "November", churn_pct: 30.1 },
+  { month: "December", churn_pct: 23.2 },
+];
+const BENCHMARKS = { p15: 11.1, p50: 22.2 };
+const FORECASTS = [
+  { segment: "Monday 5S", method: "DampedTrend", forecast: 21.8, low: 15.4, high: 28.2, teams_lost_next: 16, total_latest: 72 },
+  { segment: "Monday 7S", method: "MA3",        forecast: 26.7, low: 3.7,  high: 49.6, teams_lost_next: 3,  total_latest: 10 },
+  { segment: "Sunday 5S", method: "MA3",        forecast: 22.2, low: 10.7, high: 33.7, teams_lost_next: 4,  total_latest: 18 },
+  { segment: "Thursday 5S", method: "MA3",      forecast: 22.5, low: 8.9,  high: 36.2, teams_lost_next: 7,  total_latest: 32 },
+  { segment: "Tuesday 5S", method: "MA3",       forecast: 20.6, low: 7.4,  high: 33.8, teams_lost_next: 8,  total_latest: 37 },
+  { segment: "Wednesday 5S", method: "MA3",     forecast: 20.7, low: 4.1,  high: 37.3, teams_lost_next: 6,  total_latest: 30 },
+  { segment: "Wednesday Works", method: "MA3",   forecast: 35.4, low: 15.3, high: 55.5, teams_lost_next: 4,  total_latest: 10 },
+];
 
-      const dataPoint: ChurnData = {
-        league: leagueType,
-        day,
-        format,
-        date: `${monthStr} ${yearStr}`,
-        month: monthStr,
-        year,
-        totalTeams,
-        teamsLost,
-        churnRate,
-        season: seasonMap[monthStr] || 'Unknown'
-      };
+// ----------------------
+// Helpers
+// ----------------------
+const fmtSegment = (s: string) => s.replace(" 5S", " 5s").replace(" 7S", " 7s");
+const pct = (n: number) => `${n.toFixed(1)}%`;
+const toNumber = (value: number | string | null | undefined) =>
+  typeof value === "number" ? value : Number(value ?? 0);
+const formatPercentValue = (value: number | string, fractionDigits = 1) =>
+  `${toNumber(value).toFixed(fractionDigits)}%`;
+const formatSlopeValue = (value: number | string, fractionDigits = 2) => {
+  const numeric = toNumber(value);
+  return `${numeric >= 0 ? "+" : ""}${numeric.toFixed(fractionDigits)} pp`;
+};
 
-      dataPoint.shortLeague = `${dayAbbrev[day] || day} ${format} - ${monthAbbrev[monthStr] || monthStr} ${yearStr}`;
+// Build weighted churn over time per format
+type FormatKey = NormRow["format"];
+type FormatSeriesPoint = { date: string } & Record<FormatKey, number | null>;
 
-      data.push(dataPoint);
-
-      if (!leagueSequences[leagueType]) {
-        leagueSequences[leagueType] = [];
-      }
-      leagueSequences[leagueType].push(dataPoint);
-    });
-
-    // For each league group, sort by date and assign season numbers
-    Object.keys(leagueSequences).forEach(league => {
-      leagueSequences[league].sort((a, b) => {
-        if (a.year !== b.year) return a.year - b.year;
-        return (monthMap[a.month] || 0) - (monthMap[b.month] || 0);
+function buildFormatSeries() {
+  const formats: FormatKey[] = ["5s", "7s", "Works"];
+  const totalsByDate = new Map<string, Record<FormatKey, { lost: number; total: number }>>();
+  NORM.forEach((row) => {
+    const dateKey = row.season_date.slice(0, 7); // yyyy-mm
+    if (!totalsByDate.has(dateKey)) {
+      totalsByDate.set(dateKey, {
+        "5s": { lost: 0, total: 0 },
+        "7s": { lost: 0, total: 0 },
+        Works: { lost: 0, total: 0 },
       });
-      leagueSequences[league].forEach((item, index) => {
-        item.seasonNumber = index + 1;
-        item.isLatestSeason = index === leagueSequences[league].length - 1;
-        if (index > 0) {
-          const prevSeason = leagueSequences[league][index - 1];
-          item.prevSeasonChurn = prevSeason.churnRate;
-          item.churnChange = item.churnRate - prevSeason.churnRate;
-        }
-      });
-    });
-
-    return data;
-  };
-
-  const processedData = processData();
-
-  // ---------------------------
-  // By League tab: group by league and order by start date (earliest first)
-  const leagueTypes = [...new Set(processedData.map(item => item.league))];
-  const churnByLeague: LeagueChurnSummary[] = leagueTypes.map(league => {
-    const leagueData = processedData.filter(item => item.league === league);
-    const totalTeamsHist = leagueData.reduce((sum, item) => sum + item.totalTeams, 0);
-    const totalLostHist = leagueData.reduce((sum, item) => sum + item.teamsLost, 0);
-    const historicalAvgChurn = totalTeamsHist ? (totalLostHist / totalTeamsHist) * 100 : 0;
-    const latestSeasonData = leagueData.find(item => item.isLatestSeason);
-    const totalTeamsLatest = latestSeasonData ? latestSeasonData.totalTeams : 0;
-    return {
-      league,
-      shortLeague: leagueData[0].shortLeague || league,
-      avgChurn: Number(historicalAvgChurn.toFixed(2)),
-      totalEntries: leagueData.length,
-      day: leagueData[0].day,
-      format: leagueData[0].format,
-      totalTeams: totalTeamsLatest,
-      year: leagueData[0].year,
-      month: leagueData[0].month
-    };
-  }).sort((a, b) => {
-    const monthMap: Record<string, number> = {
-      'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5, 'June': 6,
-      'July': 7, 'August': 8, 'September': 9, 'October': 10, 'November': 11, 'December': 12
-    };
-    if (a.year !== b.year) return a.year - b.year;
-    return (monthMap[a.month] || 0) - (monthMap[b.month] || 0);
+    }
+    const bucket = totalsByDate.get(dateKey)!;
+    bucket[row.format].lost += row.teams_lost;
+    bucket[row.format].total += row.total_teams;
   });
 
-  // ---------------------------
-  // By Day tab:
-  //   - TOTAL TEAMS of all time (sum over all entries for that day)
-  //   - Historical average churn (weighted over all entries for that day)
-  //   - Latest churn computed only from the most recent entry per format for that day.
-  const days = [...new Set(processedData.map(item => item.day))];
-  const churnByDay: DayChurnSummary[] = days.map(day => {
-    const dayData = processedData.filter(item => item.day === day);
-    const totalTeamsAllTime = dayData.reduce((sum, item) => sum + item.totalTeams, 0);
-    const totalLostHist = dayData.reduce((sum, item) => sum + item.teamsLost, 0);
-    const historicalAvgChurn = totalTeamsAllTime ? (totalLostHist / totalTeamsAllTime) * 100 : 0;
-
-    // Group by format and select the most recent entry per format
-    const formatsForDay = [...new Set(dayData.map(item => item.format))];
-    const monthMap: Record<string, number> = {
-      'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5, 'June': 6,
-      'July': 7, 'August': 8, 'September': 9, 'October': 10, 'November': 11, 'December': 12
-    };
-    const latestEntries: ChurnData[] = [];
-    formatsForDay.forEach(fmt => {
-      const entries = dayData.filter(item => item.format === fmt);
-      let latestEntry: ChurnData | null = null;
-      entries.forEach(entry => {
-        if (!latestEntry) {
-          latestEntry = entry;
-        } else if (entry.year > latestEntry.year) {
-          latestEntry = entry;
-        } else if (entry.year === latestEntry.year && (monthMap[entry.month] || 0) > (monthMap[latestEntry.month] || 0)) {
-          latestEntry = entry;
-        }
-      });
-      if (latestEntry) {
-        latestEntries.push(latestEntry);
-      }
-    });
-    const totalTeamsLatest = latestEntries.reduce((sum, item) => sum + item.totalTeams, 0);
-    const totalLostLatest = latestEntries.reduce((sum, item) => sum + item.teamsLost, 0);
-    const latestAvgChurn = totalTeamsLatest ? (totalLostLatest / totalTeamsLatest) * 100 : 0;
-
-    return {
-      day,
-      avgChurn: Number(historicalAvgChurn.toFixed(2)),
-      latestAvgChurn: Number(latestAvgChurn.toFixed(2)),
-      totalEntries: dayData.length,
-      totalTeams: totalTeamsAllTime
-    };
-  }).sort((a, b) => {
-    const order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-    return order.indexOf(a.day) - order.indexOf(b.day);
+  const sortedDates = [...totalsByDate.keys()].sort();
+  return sortedDates.map<FormatSeriesPoint>((date) => {
+    const bucket = totalsByDate.get(date)!;
+    return formats.reduce<FormatSeriesPoint>(
+      (acc, format) => {
+        const info = bucket[format];
+        acc[format] = info.total ? (info.lost / info.total) * 100 : null;
+        return acc;
+      },
+      { date, "5s": null, "7s": null, Works: null }
+    );
   });
+}
 
-  // ---------------------------
-  // By Format tab: historical average is weighted; latest average is computed from the overall latest season for that format.
-  const formats = [...new Set(processedData.map(item => item.format))];
-  const churnByFormat: FormatChurnSummary[] = formats.map(format => {
-    const formatData = processedData.filter(item => item.format === format);
-    const totalTeamsHist = formatData.reduce((sum, item) => sum + item.totalTeams, 0);
-    const totalLostHist = formatData.reduce((sum, item) => sum + item.teamsLost, 0);
-    const historicalAvgChurn = totalTeamsHist ? (totalLostHist / totalTeamsHist) * 100 : 0;
-    // Determine the overall latest season for this format.
-    const maxYear = Math.max(...formatData.map(item => item.year));
-    const candidates = formatData.filter(item => item.year === maxYear);
-    const monthMap: Record<string, number> = {
-      'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5, 'June': 6,
-      'July': 7, 'August': 8, 'September': 9, 'October': 10, 'November': 11, 'December': 12
-    };
-    const maxMonth = Math.max(...candidates.map(item => monthMap[item.month] || 0));
-    const latestSeasonData = formatData.filter(item => item.year === maxYear && (monthMap[item.month] || 0) === maxMonth);
-    const totalTeamsLatest = latestSeasonData.reduce((sum, item) => sum + item.totalTeams, 0);
-    const totalLostLatest = latestSeasonData.reduce((sum, item) => sum + item.teamsLost, 0);
-    const latestAvgChurn = totalTeamsLatest ? (totalLostLatest / totalTeamsLatest) * 100 : 0;
-    return {
-      format,
-      avgChurn: Number(historicalAvgChurn.toFixed(2)),
-      latestAvgChurn: Number(latestAvgChurn.toFixed(2)),
-      totalEntries: formatData.length,
-      totalTeams: totalTeamsLatest
-    };
-  }).sort((a, b) => b.avgChurn - a.avgChurn);
+// Latest 5s by day with delta vs previous
+function latest5sByDay() {
+  const byDay = new Map<string, NormRow[]>();
+  NORM.filter((r) => r.format === "5s").forEach((r) => {
+    if (!byDay.has(r.day_of_week)) byDay.set(r.day_of_week, []);
+    byDay.get(r.day_of_week)!.push(r);
+  });
+  const out: { day: string; latest: number; delta?: number }[] = [];
+  for (const [day, rows] of byDay) {
+    const sorted = rows.sort((a, b) => a.season_index - b.season_index);
+    const latest = sorted[sorted.length - 1].churn_pct;
+    const prev = sorted.length > 1 ? sorted[sorted.length - 2].churn_pct : undefined;
+    out.push({ day, latest, delta: prev !== undefined ? +(latest - prev).toFixed(1) : undefined });
+  }
+  return out.sort((a, b) => a.day.localeCompare(b.day));
+}
 
-  // ---------------------------
-  // Other tabs (By Season, By Year) remain unchanged.
-  const seasons = ['Winter', 'Spring', 'Summer', 'Autumn'];
-  const churnBySeason: SeasonChurnSummary[] = seasons.map(season => {
-    const seasonData = processedData.filter(item => item.season === season);
-    const totalTeamsHist = seasonData.reduce((sum, item) => sum + item.totalTeams, 0);
-    const totalLostHist = seasonData.reduce((sum, item) => sum + item.teamsLost, 0);
-    const historicalAvgChurn = totalTeamsHist ? (totalLostHist / totalTeamsHist) * 100 : 0;
-    return {
-      season,
-      avgChurn: Number(historicalAvgChurn.toFixed(2)),
-      totalEntries: seasonData.length
-    };
-  }).sort((a, b) => b.avgChurn - a.avgChurn);
+// ----------------------
+// Component
+// ----------------------
+const FORMAT_KEYS: FormatKey[] = ["5s", "7s", "Works"];
+const FORMAT_COLOURS: Record<FormatKey, string> = {
+  "5s": BRAND.green,
+  "7s": BRAND.blue,
+  Works: "rgba(255,255,255,0.35)",
+};
 
-  const years = [...new Set(processedData.map(item => item.year))];
-  const churnByYear: YearChurnSummary[] = years.map(year => {
-    const yearData = processedData.filter(item => item.year === year);
-    const totalTeamsHist = yearData.reduce((sum, item) => sum + item.totalTeams, 0);
-    const totalLostHist = yearData.reduce((sum, item) => sum + item.teamsLost, 0);
-    const historicalAvgChurn = totalTeamsHist ? (totalLostHist / totalTeamsHist) * 100 : 0;
-    return {
-      year,
-      avgChurn: Number(historicalAvgChurn.toFixed(2)),
-      totalSeasons: yearData.length,
-      totalTeams: totalTeamsHist
-    };
-  }).sort((a, b) => a.year - b.year);
-
-  // Compute highest and lowest historical churn days from churnByDay
-  const highestChurnDay = churnByDay.reduce((prev, curr) => (curr.avgChurn > prev.avgChurn ? curr : prev));
-  const lowestChurnDay = churnByDay.reduce((prev, curr) => (curr.avgChurn < prev.avgChurn ? curr : prev));
+export default function Page() {
+  const formatSeries = useMemo(buildFormatSeries, []);
+  const latest5s = useMemo(latest5sByDay, []);
 
   return (
-    <div className="p-4 w-full">
-      <h1 className="text-3xl font-bold mb-6">League Churn Rate Analysis</h1>
-
-      <div className="mb-8">
-        <div className="flex flex-wrap gap-2 mb-6">
-          <button className={`px-4 py-2 rounded ${viewType === 'byLeague' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`} onClick={() => setViewType('byLeague')}>By League</button>
-          <button className={`px-4 py-2 rounded ${viewType === 'byDay' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`} onClick={() => setViewType('byDay')}>By Day</button>
-          <button className={`px-4 py-2 rounded ${viewType === 'byFormat' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`} onClick={() => setViewType('byFormat')}>By Format</button>
-          <button className={`px-4 py-2 rounded ${viewType === 'bySeason' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`} onClick={() => setViewType('bySeason')}>By Season</button>
+    <div
+      className="min-h-screen text-white"
+      style={{
+        background:
+          "radial-gradient(circle at 0% 0%, rgba(129,187,38,0.25), transparent 55%), radial-gradient(circle at 90% 10%, rgba(56,189,248,0.2), transparent 60%), linear-gradient(135deg, #0b1220 0%, #132842 100%)",
+      }}
+    >
+      <header className="px-6 py-8 border-b border-white/10 backdrop-blur-xl">
+        <div className="max-w-6xl mx-auto flex flex-col gap-2">
+          <h1 className="text-3xl font-semibold tracking-tight">Churn dashboard</h1>
+          <p className="text-sm text-white/70">
+            Hard-coded dataset · segmentation by day and format
+          </p>
         </div>
+      </header>
 
-        {viewType === 'byLeague' && (
-          <div>
-            <h2 className="text-xl font-bold mb-2">Average Churn Rate by League</h2>
-            <p className="mb-4">
-              Showing average churn rate (left axis) and total teams (right axis) for each league, ordered by start date (earliest first).
-            </p>
-            <div className="w-full">
-              <div className="h-[48rem] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={churnByLeague} margin={{ top: 20, right: 60, left: 20, bottom: 100 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="shortLeague" angle={-45} textAnchor="end" height={100} interval={0} />
-                    <YAxis label={{ value: 'Churn Rate (%)', angle: -90, position: 'insideLeft' }} />
-                    <YAxis yAxisId="right" orientation="right" label={{ value: 'Total Teams', angle: 90, position: 'insideRight' }} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend />
-                    <Bar dataKey="avgChurn" name="Avg Churn Rate (%)" fill="#8884d8" />
-                    <Bar dataKey="totalTeams" name="Total Teams" fill="#ffc658" yAxisId="right" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-        )}
+      <main className="px-6 py-10">
+        <div className="max-w-6xl mx-auto flex flex-col gap-10">
+          {/* Executive tiles */}
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <Tile
+            title="Overall weighted churn"
+            helper="Current portfolio view"
+            value={pct(OVERALL_WEIGHTED)}
+          />
+          <Tile
+            title="Good cohort threshold"
+            helper="≤ 15th percentile"
+            value={pct(BENCHMARKS.p15)}
+          />
+          <Tile
+            title="Watch corridor"
+            helper="15th – 50th percentile"
+            value={`${pct(BENCHMARKS.p15)} – ${pct(BENCHMARKS.p50)}`}
+          />
+          <Tile
+            title="Action threshold"
+            helper="≥ 50th percentile"
+            value={pct(BENCHMARKS.p50)}
+          />
+        </section>
 
-        {viewType === 'byDay' && (
-          <div>
-            <h2 className="text-xl font-bold mb-2">Average Churn Rate by Day</h2>
-            <p className="mb-4">
-              This chart shows:
-              <br />
-              • Total Teams (all teams for that day)
-              <br />
-              • Historical Average Churn Rate (across all leagues for that day)
-              <br />
-              • Latest Churn Rate computed only from the most recent entry per format (e.g. for Monday, the latest 5‑a‑side and 7‑a‑side)
-            </p>
-            <div className="h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={churnByDay} margin={{ top: 20, right: 30, left: 20, bottom: 50 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis label={{ value: 'Churn Rate (%)', angle: -90, position: 'insideLeft' }} />
-                  <Tooltip content={<CustomTooltip />} />
+        {/* Format trend */}
+        <section className="grid gap-8 xl:grid-cols-2">
+          <Card
+            title="Weighted churn over time by format"
+            subtitle="Aggregate by competition format"
+          >
+            <div className="h-72">
+              <ResponsiveContainer>
+                <LineChart data={formatSeries} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
+                  <CartesianGrid stroke={BRAND.grid} />
+                  <XAxis dataKey="date" type="category" allowDuplicatedCategory={false} />
+                  <YAxis domain={[0, 80]} tickFormatter={(v) => `${v}%`} />
+                  <Tooltip formatter={(value: number | string) => formatPercentValue(value)} />
                   <Legend />
-                  <Bar dataKey="totalTeams" name="Total Teams (All Time)" fill="#ffc658" />
-                  <Bar dataKey="avgChurn" name="Historical Avg Churn (%)" fill="#8884d8" />
-                  <Bar dataKey="latestAvgChurn" name="Latest Avg Churn (%)" fill="#82ca9d" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
-
-        {viewType === 'byFormat' && (
-          <div>
-            <h2 className="text-xl font-bold mb-2">Average Churn Rate by Format</h2>
-            <p className="mb-4">
-              Comparing weighted historical churn rate and latest season churn rate for each format.
-            </p>
-            <div className="h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={churnByFormat} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="format" />
-                  <YAxis label={{ value: 'Churn Rate (%)', angle: -90, position: 'insideLeft' }} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                  <Bar dataKey="avgChurn" name="Historical Avg Churn (%)" fill="#8884d8" />
-                  <Bar dataKey="latestAvgChurn" name="Latest Avg Churn (%)" fill="#82ca9d" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
-
-        {viewType === 'bySeason' && (
-          <div>
-            <h2 className="text-xl font-bold mb-2">Average Churn Rate by Season</h2>
-            <p className="mb-4">Analysing if leagues starting during certain seasons of the year have higher churn rates.</p>
-            <div className="h-96 mb-8">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={churnBySeason} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="season" />
-                  <YAxis label={{ value: 'Churn Rate (%)', angle: -90, position: 'insideLeft' }} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                  <Bar dataKey="avgChurn" name="Avg Churn Rate (%)" fill="#8884d8" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            <h2 className="text-xl font-bold mt-8 mb-2">Churn Rate by Year</h2>
-            <p className="mb-4">Analysing year-over-year trends in churn rates.</p>
-            <div className="h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={churnByYear} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="year" />
-                  <YAxis label={{ value: 'Churn Rate (%)', angle: -90, position: 'insideLeft' }} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                  <Line type="monotone" dataKey="avgChurn" name="Avg Churn Rate (%)" stroke="#8884d8" activeDot={{ r: 8 }} />
+                  {FORMAT_KEYS.map((formatKey) => (
+                    <Line
+                      key={formatKey}
+                      type="monotone"
+                      dataKey={formatKey}
+                      name={formatKey}
+                      connectNulls
+                      stroke={FORMAT_COLOURS[formatKey]}
+                      dot
+                    />
+                  ))}
                 </LineChart>
               </ResponsiveContainer>
             </div>
-          </div>
-        )}
-      </div>
+          </Card>
 
-      {/* Key Insights Section */}
-      <div className="mt-8 bg-gray-50 p-6 rounded-lg">
-        <h2 className="text-xl font-bold mb-4">Key Insights</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white p-4 rounded shadow">
-            <h3 className="font-bold text-lg mb-2">Format Comparison</h3>
-            <p>
-              Works leagues have an average churn rate of {churnByFormat.find(f => f.format === 'Works')?.avgChurn}%,
-              while 5s leagues have {churnByFormat.find(f => f.format === '5s')?.avgChurn}% and
-              7s leagues have {churnByFormat.find(f => f.format === '7s')?.avgChurn}%.
-            </p>
-          </div>
-          <div className="bg-white p-4 rounded shadow">
-            <h3 className="font-bold text-lg mb-2">Day of Week Impact</h3>
-            <p>
-              The highest historical churn day is {highestChurnDay.day} ({highestChurnDay.avgChurn}%),
-              while the lowest is {lowestChurnDay.day} ({lowestChurnDay.avgChurn}%).
-            </p>
-          </div>
-          <div className="bg-white p-4 rounded shadow">
-            <h3 className="font-bold text-lg mb-2">Seasonal Trends</h3>
-            <p>
-              Leagues starting in {churnBySeason[0]?.season} have the highest average churn ({churnBySeason[0]?.avgChurn}%),
-              while {churnBySeason[churnBySeason.length-1]?.season} starts have the lowest ({churnBySeason[churnBySeason.length-1]?.avgChurn}%).
-            </p>
-          </div>
-          <div className="bg-white p-4 rounded shadow">
-            <h3 className="font-bold text-lg mb-2">League Size Correlation</h3>
-            <p>
-              Larger leagues (e.g. Monday 5s, Tuesday 5s) tend to have more stable retention rates compared to smaller leagues (Works leagues).
-            </p>
-          </div>
-        </div>
-      </div>
+          <Card
+            title="5s churn by day – latest season"
+            subtitle="Labels show delta versus the previous season"
+          >
+            <div className="h-72">
+              <ResponsiveContainer>
+                <BarChart data={latest5s} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
+                  <CartesianGrid stroke={BRAND.grid} />
+                  <XAxis dataKey="day" />
+                  <YAxis domain={[0, 80]} tickFormatter={(v) => `${v}%`} />
+                  <Tooltip formatter={(value: number | string) => formatPercentValue(value)} />
+                  <Bar dataKey="latest" name="Latest churn" fill={BRAND.green}>
+                    <LabelList
+                      dataKey="latest"
+                      position="top"
+                      formatter={(value: number | string) => formatPercentValue(value)}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <ul className="mt-4 text-sm text-white/70 space-y-1">
+              {latest5s.map((d) => (
+                <li key={d.day}>
+                  <span className="font-medium text-white">{d.day}</span>
+                  <span className="ml-2">
+                    Δ vs previous{" "}
+                    {d.delta !== undefined ? `${d.delta >= 0 ? "+" : ""}${d.delta.toFixed(1)} pp` : "n/a"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </section>
 
-      {/* Action Plan Section */}
-      <div className="mt-8 bg-blue-50 p-6 rounded-lg">
-        <h2 className="text-xl font-bold mb-4">Action Plan</h2>
-        <div className="space-y-4">
-          <div className="bg-white p-4 rounded shadow">
-            <h3 className="font-bold text-lg mb-2 text-red-600">High Priority</h3>
-            <ul className="list-disc pl-5 space-y-2">
-              <li>Survey teams in high-churn Works leagues to identify specific issues</li>
-              <li>Document and analyse retention practices from Monday 5s leagues</li>
-              <li>Implement an early warning system for teams at risk of leaving</li>
+        {/* Scorecards */}
+        <section className="grid gap-8">
+          <Card title="By format (weighted)" subtitle="Weighted churn across all seasons">
+            <Table
+              columns={["Format", "Weighted churn"]}
+              rows={FORMAT_WEIGHTED.map((r) => [r.format, pct(r.weighted_churn_pct)])}
+            />
+          </Card>
+          <Card title="5s by day (weighted)" subtitle="Ranked by lowest churn first">
+            <Table
+              columns={["Day", "Weighted churn", "Rank"]}
+              rows={[...FIVE_BY_DAY]
+                .sort((a, b) => a.weighted_churn_pct - b.weighted_churn_pct)
+                .map((r, i) => [r.day_of_week, pct(r.weighted_churn_pct), i + 1])}
+            />
+          </Card>
+          <Card title="Latest season per segment" subtitle="Most recent churn position vs prior season">
+            <Table
+              columns={["Segment", "Current", "Δ vs prev", "Teams"]}
+              rows={LATEST.map((r) => [fmtSegment(r.segment), pct(r.current_churn_pct), (r.delta_pp_vs_prev >= 0 ? "+" : "") + r.delta_pp_vs_prev.toFixed(1) + " pp", r.total_teams_latest])}
+            />
+          </Card>
+        </section>
+
+        {/* Seasonality & trend diagnostics */}
+        <section className="grid gap-8 xl:grid-cols-2">
+          <Card title="Average churn by month" subtitle="Mean across all segments and seasons">
+            <div className="h-72">
+              <ResponsiveContainer>
+                <BarChart data={MONTH_MEANS} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
+                  <CartesianGrid stroke={BRAND.grid} />
+                  <XAxis dataKey="month" />
+                  <YAxis domain={[0, 80]} tickFormatter={(v) => `${v}%`} />
+                  <Tooltip formatter={(value: number | string) => formatPercentValue(value)} />
+                  <ReferenceLine y={BENCHMARKS.p50} stroke="rgba(255,255,255,0.35)" strokeDasharray="3 3" />
+                  <Bar dataKey="churn_pct" name="Average churn" fill={BRAND.green}>
+                    <LabelList
+                      dataKey="churn_pct"
+                      position="top"
+                      formatter={(value: number | string) => formatPercentValue(value)}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="text-sm text-white/70 mt-4">
+              Peaks cluster around late winter and late summer. September and January continue to be the least
+              volatile entry points.
+            </p>
+          </Card>
+
+          <Card
+            title="Trend slope by segment (pp per season)"
+            subtitle="Positive values indicate rising churn"
+          >
+            <div className="h-72">
+              <ResponsiveContainer>
+                <BarChart
+                  data={SEGMENT_TRENDS}
+                  margin={{ left: 16, right: 24, top: 8, bottom: 8 }}
+                  layout="vertical"
+                >
+                  <CartesianGrid stroke={BRAND.grid} />
+                  <XAxis
+                    type="number"
+                    domain={["auto", "auto"]}
+                    tickFormatter={(v) => `${v.toFixed(1)} pp`}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="segment"
+                    tickFormatter={fmtSegment}
+                    width={140}
+                  />
+                  <Tooltip
+                    formatter={(value: number | string) => `${formatSlopeValue(value)} / season`}
+                    labelFormatter={(label) => fmtSegment(String(label))}
+                  />
+                  <ReferenceLine x={0} stroke={BRAND.grid} />
+                  <Bar dataKey="trend_slope_pp_per_season" name="pp / season">
+                    {SEGMENT_TRENDS.map((entry) => (
+                      <Cell
+                        key={entry.segment}
+                        fill={entry.trend_slope_pp_per_season >= 0 ? BRAND.positive : BRAND.green}
+                      />
+                    ))}
+                    <LabelList
+                      dataKey="trend_slope_pp_per_season"
+                      position="right"
+                      formatter={(value: number | string) => formatSlopeValue(value)}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="text-sm text-white/70 mt-4">
+              Positive slopes point to worsening churn season-on-season (notably Monday and Sunday cohorts).
+              Negative slopes highlight improving retention (Tuesday and Thursday 5s).
+            </p>
+          </Card>
+        </section>
+
+        {/* Forecasts */}
+        <section className="grid gap-8">
+          <Card
+            title="Forecast (next season) – 80% interval"
+            subtitle="Scenario if current team counts hold"
+          >
+            <Table
+              columns={["Segment", "Point", "80% low", "80% high", "Teams lost (if last total)"]}
+              rows={FORECASTS.map((f) => [fmtSegment(f.segment), pct(f.forecast), pct(f.low), pct(f.high), f.teams_lost_next])}
+            />
+          </Card>
+
+        </section>
+
+        {/* Narrative analysis (no suggestions, just observations) */}
+        <section className="grid gap-6">
+          <Card title="Observations" subtitle="Quick read for the next leadership meeting">
+            <ul className="list-disc pl-6 space-y-2 text-sm text-white/80">
+              <li>
+                Overall weighted churn sits at <span className="font-semibold text-white">{pct(OVERALL_WEIGHTED)}</span>.
+                5s remains the most resilient format whereas Works is the most volatile.
+              </li>
+              <li>
+                Within 5s, Monday is currently the strongest day on a weighted basis; Thursday is weakest and should stay
+                in the watch column.
+              </li>
+              <li>
+                Latest seasonal movements: Wednesday Works {pct(40.0)} (↑ 20.0 pp), Wednesday 5s {pct(30.0)} (↑ 19.3 pp),
+                Monday 5s {pct(20.8)} (↑ 7.6 pp); Tuesday 5s improved (↓ 9.8 pp) and Sunday 5s improved (↓ 11.1 pp).
+              </li>
+              <li>
+                Trend slopes indicate Monday / Sunday cohorts continue to slip, while Tuesday and Thursday 5s are building
+                momentum.
+              </li>
+              <li>
+                Month effects are directional only: February, August and November deliver the steepest churn; September
+                and January remain calmer launch windows.
+              </li>
             </ul>
-          </div>
-          <div className="bg-white p-4 rounded shadow">
-            <h3 className="font-bold text-lg mb-2 text-yellow-600">Medium Priority</h3>
-            <ul className="list-disc pl-5 space-y-2">
-              <li>Redesign season structure for Works leagues based on feedback</li>
-              <li>Test adjusted division sizes in select leagues</li>
-              <li>Create loyalty incentives for upcoming season registrations</li>
-            </ul>
-          </div>
-          <div className="bg-white p-4 rounded shadow">
-            <h3 className="font-bold text-lg mb-2 text-green-600">Future Initiatives</h3>
-            <ul className="list-disc pl-5 space-y-2">
-              <li>Implement scheduling changes to minimise Spring season starts</li>
-              <li>Consolidate the smallest leagues with chronic retention issues</li>
-              <li>Develop a comprehensive new team onboarding programme</li>
-            </ul>
-          </div>
-        </div>
+          </Card>
+        </section>
       </div>
+    </main>
+  </div>
+  );
+}
+
+// ----------------------
+// UI bits
+// ----------------------
+function Card({
+  title,
+  children,
+  subtitle,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="rounded-3xl border backdrop-blur-2xl shadow-[0_20px_45px_-28px_rgba(0,0,0,0.8)] p-6"
+      style={{
+        background: BRAND.frostedBg,
+        borderColor: BRAND.frostedBorder,
+      }}
+    >
+      <div className="flex flex-col gap-1 mb-4">
+        <h2 className="text-lg font-semibold tracking-tight text-white">{title}</h2>
+        {subtitle ? (
+          <p className="text-xs uppercase tracking-[0.25em] text-white/45">{subtitle}</p>
+        ) : null}
+      </div>
+      {children}
     </div>
   );
-};
+}
 
-export default ChurnAnalysisPage;
+function Tile({ title, value, helper }: { title: string; value: string; helper: string }) {
+  return (
+    <div
+      className="rounded-3xl border backdrop-blur-2xl shadow-[0_16px_40px_-30px_rgba(0,0,0,0.75)] p-6 flex flex-col gap-3"
+      style={{
+        background: BRAND.frostedBg,
+        borderColor: BRAND.frostedBorder,
+      }}
+    >
+      <div className="text-sm font-medium text-white/70 uppercase tracking-[0.25em]">{title}</div>
+      <div className="text-4xl font-semibold text-white tracking-tight">{value}</div>
+      <div className="text-xs text-white/55">{helper}</div>
+    </div>
+  );
+}
+
+function Table({ columns, rows }: { columns: string[]; rows: (string | number)[][] }) {
+  return (
+    <div className="overflow-x-auto rounded-2xl border border-white/10">
+      <table className="min-w-full text-sm text-white/80">
+        <thead>
+          <tr className="text-left border-b border-white/10">
+            {columns.map((c) => (
+              <th key={c} className="py-3 px-4 font-semibold text-white uppercase tracking-[0.2em] text-xs">
+                {c}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr
+              key={i}
+              className="border-b last:border-b-0 border-white/10 hover:bg-white/5 transition-colors duration-200"
+            >
+              {r.map((cell, j) => (
+                <td key={j} className="py-3 px-4 text-sm">{cell}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
