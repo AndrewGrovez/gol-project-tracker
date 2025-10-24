@@ -13,6 +13,7 @@ interface GraphAPIError {
   error_subcode?: number;
   error_user_title?: string;
   error_user_msg?: string;
+  fbtrace_id?: string;
 }
 
 interface ScheduleResult {

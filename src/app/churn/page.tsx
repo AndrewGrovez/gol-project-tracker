@@ -5,6 +5,8 @@ import ChurnRateDataViewer from "./ChurnRateDataViewer";
 // Define a constant for the cell range for all day tabs
 const DATA_RANGE = "A1:D25";
 
+export const dynamic = "force-dynamic";
+
 export default async function ChurnPage() {
   if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
     throw new Error("GOOGLE_SERVICE_ACCOUNT_EMAIL is not set");

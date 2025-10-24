@@ -6,6 +6,8 @@ import IncomeDataViewer from "./IncomeDataViewer";
 // Define a constant for the cell range you want to use across all tabs
 const DATA_RANGE = "A4:J64";
 
+export const dynamic = "force-dynamic";
+
 export default async function IncomePage() {
   if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
     throw new Error("GOOGLE_SERVICE_ACCOUNT_EMAIL is not set");

@@ -2,6 +2,8 @@
 import React from "react";
 import { BetaAnalyticsDataClient, protos } from "@google-analytics/data";
 
+export const dynamic = "force-dynamic";
+
 export default async function WebAnalyticsPage() {
   if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
     throw new Error("GOOGLE_SERVICE_ACCOUNT_EMAIL is not set");
