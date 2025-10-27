@@ -265,10 +265,8 @@ export default function Page() {
     >
       <header className="px-6 py-8 border-b border-white/10 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto flex flex-col gap-2">
-          <h1 className="text-3xl font-semibold tracking-tight">Churn dashboard</h1>
-          <p className="text-sm text-white/70">
-            Hard-coded dataset · segmentation by day and format
-          </p>
+          <h1 className="text-3xl font-semibold tracking-tight">Churn Analysis: Oct 2023 - Oct 2025</h1>
+          <p className="text-sm text-white/70">Sample data, broken down by day and game type.</p>
         </div>
       </header>
 
@@ -277,23 +275,23 @@ export default function Page() {
           {/* Executive tiles */}
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Tile
-            title="Overall weighted churn"
-            helper="Current portfolio view"
+            title="Overall churn rate"
+            helper="Current view"
             value={pct(OVERALL_WEIGHTED)}
           />
           <Tile
-            title="Good cohort threshold"
-            helper="≤ 15th percentile"
+            title="Good target"
+            helper="Aim for this or lower"
             value={pct(BENCHMARKS.p15)}
           />
           <Tile
-            title="Watch corridor"
-            helper="15th – 50th percentile"
+            title="Watch zone"
+            helper="Keep an eye on these"
             value={`${pct(BENCHMARKS.p15)} – ${pct(BENCHMARKS.p50)}`}
           />
           <Tile
-            title="Action threshold"
-            helper="≥ 50th percentile"
+            title="Needs attention"
+            helper="Act on these"
             value={pct(BENCHMARKS.p50)}
           />
         </section>
@@ -301,8 +299,8 @@ export default function Page() {
         {/* Format trend */}
         <section className="grid gap-8 xl:grid-cols-2">
           <Card
-            title="Weighted churn over time by format"
-            subtitle="Aggregate by competition format"
+            title="Churn over time by game type"
+            subtitle="By game type"
           >
             <div className="h-72">
               <ResponsiveContainer>
@@ -329,8 +327,8 @@ export default function Page() {
           </Card>
 
           <Card
-            title="5s churn by day – latest season"
-            subtitle="Labels show delta versus the previous season"
+            title="5‑a‑side by day – latest season"
+            subtitle="Change since last season"
           >
             <div className="h-72">
               <ResponsiveContainer>
@@ -354,8 +352,8 @@ export default function Page() {
                 <li key={d.day}>
                   <span className="font-medium text-white">{d.day}</span>
                   <span className="ml-2">
-                    Δ vs previous{" "}
-                    {d.delta !== undefined ? `${d.delta >= 0 ? "+" : ""}${d.delta.toFixed(1)} pp` : "n/a"}
+                    Change vs last season{" "}
+                    {d.delta !== undefined ? `${d.delta >= 0 ? "+" : ""}${d.delta.toFixed(1)} pts` : "n/a"}
                   </span>
                 </li>
               ))}
@@ -365,13 +363,13 @@ export default function Page() {
 
         {/* Scorecards */}
         <section className="grid gap-8">
-          <Card title="By format (weighted)" subtitle="Weighted churn across all seasons">
+          <Card title="By game type" subtitle="Average across seasons">
             <Table
               columns={["Format", "Weighted churn"]}
               rows={FORMAT_WEIGHTED.map((r) => [r.format, pct(r.weighted_churn_pct)])}
             />
           </Card>
-          <Card title="5s by day (weighted)" subtitle="Ranked by lowest churn first">
+          <Card title="5‑a‑side by day" subtitle="Best to worst (lower is better)">
             <Table
               columns={["Day", "Weighted churn", "Rank"]}
               rows={[...FIVE_BY_DAY]
@@ -379,7 +377,7 @@ export default function Page() {
                 .map((r, i) => [r.day_of_week, pct(r.weighted_churn_pct), i + 1])}
             />
           </Card>
-          <Card title="Latest season per segment" subtitle="Most recent churn position vs prior season">
+          <Card title="Latest by group" subtitle="Now vs last season">
             <Table
               columns={["Segment", "Current", "Δ vs prev", "Teams"]}
               rows={LATEST.map((r) => [fmtSegment(r.segment), pct(r.current_churn_pct), (r.delta_pp_vs_prev >= 0 ? "+" : "") + r.delta_pp_vs_prev.toFixed(1) + " pp", r.total_teams_latest])}
@@ -389,7 +387,7 @@ export default function Page() {
 
         {/* Seasonality & trend diagnostics */}
         <section className="grid gap-8 xl:grid-cols-2">
-          <Card title="Average churn by month" subtitle="Mean across all segments and seasons">
+          <Card title="Average by month" subtitle="Across all groups and seasons">
             <div className="h-72">
               <ResponsiveContainer>
                 <BarChart data={MONTH_MEANS} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
@@ -415,8 +413,8 @@ export default function Page() {
           </Card>
 
           <Card
-            title="Trend slope by segment (pp per season)"
-            subtitle="Positive values indicate rising churn"
+            title="Trend by group (per season)"
+            subtitle="Higher means getting worse"
           >
             <div className="h-72">
               <ResponsiveContainer>
@@ -468,8 +466,8 @@ export default function Page() {
         {/* Forecasts */}
         <section className="grid gap-8">
           <Card
-            title="Forecast (next season) – 80% interval"
-            subtitle="Scenario if current team counts hold"
+            title="Next season forecast (80% range)"
+            subtitle="If team counts stay the same"
           >
             <Table
               columns={["Segment", "Point", "80% low", "80% high", "Teams lost (if last total)"]}
@@ -481,27 +479,25 @@ export default function Page() {
 
         {/* Narrative analysis (no suggestions, just observations) */}
         <section className="grid gap-6">
-          <Card title="Observations" subtitle="Quick read for the next leadership meeting">
+          <Card title="What this means" subtitle="Plain‑English highlights">
             <ul className="list-disc pl-6 space-y-2 text-sm text-white/80">
               <li>
-                Overall weighted churn sits at <span className="font-semibold text-white">{pct(OVERALL_WEIGHTED)}</span>.
-                5s remains the most resilient format whereas Works is the most volatile.
+                Overall churn is <span className="font-semibold text-white">{pct(OVERALL_WEIGHTED)}</span>. 5‑a‑side is
+                lowest; Works is highest.
               </li>
               <li>
-                Within 5s, Monday is currently the strongest day on a weighted basis; Thursday is weakest and should stay
-                in the watch column.
+                In 5‑a‑side, Monday looks best right now. Thursday is worst and needs the most focus.
               </li>
               <li>
-                Latest seasonal movements: Wednesday Works {pct(40.0)} (↑ 20.0 pp), Wednesday 5s {pct(30.0)} (↑ 19.3 pp),
-                Monday 5s {pct(20.8)} (↑ 7.6 pp); Tuesday 5s improved (↓ 9.8 pp) and Sunday 5s improved (↓ 11.1 pp).
+                Recent moves: Wednesday Works {pct(40.0)} (up 20 pts), Wednesday 5s {pct(30.0)} (up 19 pts), Monday 5s
+                {" "}
+                {pct(20.8)} (up 7.6 pts). Tuesday 5s (down 9.8 pts) and Sunday 5s (down 11.1 pts) improved.
               </li>
               <li>
-                Trend slopes indicate Monday / Sunday cohorts continue to slip, while Tuesday and Thursday 5s are building
-                momentum.
+                Trends: Monday and Sunday are getting worse over time; Tuesday and Thursday are getting better.
               </li>
               <li>
-                Month effects are directional only: February, August and November deliver the steepest churn; September
-                and January remain calmer launch windows.
+                By month: highest leaving tends to be in Feb, Aug and Nov; lower in Sep and Jan.
               </li>
             </ul>
           </Card>
