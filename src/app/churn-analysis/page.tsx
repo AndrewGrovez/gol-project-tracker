@@ -266,7 +266,7 @@ export default function Page() {
       <header className="px-6 py-8 border-b border-white/10 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto flex flex-col gap-2">
           <h1 className="text-3xl font-semibold tracking-tight">Churn Analysis: Oct 2023 - Oct 2025</h1>
-          <p className="text-sm text-white/70">Sample data, broken down by day and game type.</p>
+          <p className="text-sm text-white/70">Sample data, broken down by day and league type.</p>
         </div>
       </header>
 
