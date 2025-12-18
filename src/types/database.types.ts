@@ -29,6 +29,7 @@ export type Comment = {
   user_id: string;
   content: string;
   created_at: string;
+  parent_comment_id?: string | null;
 };
 
 export type KPI = {
