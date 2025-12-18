@@ -4,7 +4,7 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 
 export async function DELETE(
   _request: Request,
-  context: { params: { commentId: string } }
+  { params }: { params: Promise<{ commentId: string }> }
 ) {
   try {
     const missingEnvVars = ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"].filter(
@@ -46,7 +46,7 @@ export async function DELETE(
       }
     );
 
-    const commentId = context.params.commentId;
+    const { commentId } = await params;
     const { data: commentRows, error: commentError } = await serviceClient
       .from("comments")
       .select("id, user_id")
@@ -101,4 +101,3 @@ export async function DELETE(
     );
   }
 }
-
