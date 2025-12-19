@@ -18,7 +18,6 @@ import {
 import NewTaskDialog from "./NewTaskDialog";
 import EditTaskDialog from "./EditTaskDialog";
 import NewKPIDialog from "./NewKPIDialog";
-import ProjectTimeline from "./ProjectTimeline";
 import { Select } from "./ui/select";
 import { Button } from "./ui/button";
 import EditKPIDialog from "./EditKPIDialog";
@@ -952,10 +951,7 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
           </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-3xl border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur-xl">
-            <ProjectTimeline projectId={project.id} />
-          </div>
+        <section>
           <div className="rounded-3xl border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur-xl">
             <ProjectComments projectId={project.id} />
           </div>
