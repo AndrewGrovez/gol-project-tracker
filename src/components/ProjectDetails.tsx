@@ -24,6 +24,7 @@ import EditKPIDialog from "./EditKPIDialog";
 import { createClient } from "@/utils/supabase/client";
 import ProjectComments from "./ProjectComments";
 import KanbanBoard from "./KanbanBoard";
+import ProjectDocuments from "./ProjectDocuments";
 
 interface ProjectDetailsProps {
   id: string;
@@ -443,11 +444,11 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
     <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50">
       <div className="pointer-events-none absolute -top-40 -left-32 h-[36rem] w-[36rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(129,187,38,0.28)_0%,_rgba(148,163,184,0.08)_60%,_transparent_100%)] blur-3xl" />
       <div className="pointer-events-none absolute bottom-[-14rem] right-[-20rem] h-[44rem] w-[44rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(56,189,248,0.22)_0%,_rgba(129,187,38,0.12)_55%,_transparent_100%)] blur-3xl" />
-      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-12 px-6 py-12">
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-12 px-6 pt-6 pb-12">
         <section className="flex flex-col gap-6">
-          <div className="rounded-3xl border border-white/60 bg-white/85 px-8 py-10 shadow-xl backdrop-blur-xl">
+          <div className="rounded-3xl border border-white/60 bg-white/85 px-6 py-6 shadow-xl backdrop-blur-xl">
             <div className="space-y-4">
-              <h1 className="text-3xl font-semibold text-[#09162a] leading-tight">{project.name}</h1>
+              <h1 className="text-2xl font-semibold text-[#09162a] leading-tight">{project.name}</h1>
               {hasDescription ? (
                 <p className="max-w-3xl text-sm leading-relaxed text-slate-600">{project.description}</p>
               ) : null}
@@ -954,6 +955,11 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
         <section>
           <div className="rounded-3xl border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur-xl">
             <ProjectComments projectId={project.id} />
+          </div>
+        </section>
+        <section>
+          <div className="rounded-3xl border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur-xl">
+            <ProjectDocuments projectId={project.id} />
           </div>
         </section>
       </div>

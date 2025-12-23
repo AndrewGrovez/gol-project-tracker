@@ -41,3 +41,12 @@ export type KPI = {
   created_at: string;
   updated_at: string;
 };
+
+export type ProjectDocument = {
+  id: string;
+  project_id: string;
+  title: string;
+  url: string;
+  created_at: string;
+  updated_at: string;
+};
