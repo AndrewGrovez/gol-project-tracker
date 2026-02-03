@@ -17,6 +17,7 @@ interface Comment {
 
 interface ProjectCommentsProps {
   projectId: string;
+  onCountChange?: (count: number) => void;
 }
 
 interface ProfileSummary {
@@ -24,7 +25,7 @@ interface ProfileSummary {
   display_name: string;
 }
 
-export default function ProjectComments({ projectId }: ProjectCommentsProps) {
+export default function ProjectComments({ projectId, onCountChange }: ProjectCommentsProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(true);
@@ -117,6 +118,10 @@ export default function ProjectComments({ projectId }: ProjectCommentsProps) {
 
     fetchComments();
   }, [projectId, supabase]);
+
+  useEffect(() => {
+    onCountChange?.(comments.length);
+  }, [comments.length, onCountChange]);
 
   const mentionSuggestions = useMemo(() => {
     if (!showMentionList) return [] as ProfileSummary[];

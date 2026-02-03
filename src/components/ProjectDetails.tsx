@@ -83,6 +83,7 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [commentCount, setCommentCount] = useState(0);
   // Profiles fetched from the profiles table for assignment options
   const [profiles, setProfiles] = useState<{ id: string; display_name: string }[]>([]);
 
@@ -143,9 +144,19 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
           .eq("project_id", id);
         if (kpiError) throw kpiError;
 
+        const { count: commentCountResult, error: commentCountError } = await supabase
+          .from("comments")
+          .select("id", { count: "exact", head: true })
+          .eq("project_id", id);
+
+        if (commentCountError) {
+          console.error("Error fetching comment count:", commentCountError);
+        }
+
         setProject(projectData);
         setTasks(taskData || []);
         setKpis(kpiData || []);
+        setCommentCount(commentCountResult ?? 0);
       } catch (err) {
         console.error("Error:", err);
         setError("Failed to load project details");
@@ -566,6 +577,15 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                 }`}
               >
                 Comments
+                <span
+                  className={`ml-2 inline-flex min-w-[1.5rem] items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    activeTab === "comments"
+                      ? "bg-[#1c3145]/10 text-[#1c3145]"
+                      : "bg-white/20 text-white/80"
+                  }`}
+                >
+                  {commentCount}
+                </span>
               </button>
               <button
                 type="button"
@@ -1025,7 +1045,9 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
             </div>
           ) : null}
 
-              {activeTab === "comments" ? <ProjectComments projectId={project.id} /> : null}
+              {activeTab === "comments" ? (
+                <ProjectComments projectId={project.id} onCountChange={setCommentCount} />
+              ) : null}
 
               {activeTab === "docs" ? <ProjectDocuments projectId={project.id} /> : null}
             </div>

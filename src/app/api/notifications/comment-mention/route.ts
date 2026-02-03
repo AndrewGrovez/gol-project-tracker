@@ -11,6 +11,18 @@ interface MentionRequestBody {
   authorId: string;
 }
 
+interface ProjectAccess {
+  id: string;
+  name: string;
+  allowed_users: string[] | null;
+}
+
+interface CommentAccess {
+  id: string;
+  project_id: string;
+  user_id: string;
+}
+
 export async function POST(request: Request) {
   try {
     const requiredEnvVars = [
@@ -43,12 +55,39 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (authorId !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { data: commentData, error: commentError } = await supabase
+      .from("comments")
+      .select("id, project_id, user_id")
+      .eq("id", commentId)
+      .single() as { data: CommentAccess | null; error: unknown };
+
+    if (commentError || !commentData) {
+      console.error("Comment fetch error", commentError);
+      return NextResponse.json({ error: "Comment not found" }, { status: 404 });
+    }
+
+    if (commentData.user_id !== user.id || commentData.project_id !== projectId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const { data: projectData, error: projectError } = await supabase
       .from("projects")
-      .select("name")
+      .select("id, name, allowed_users")
       .eq("id", projectId)
-      .single();
+      .single() as { data: ProjectAccess | null; error: unknown };
 
     if (projectError) {
       console.error("Project fetch error", projectError);
@@ -60,6 +99,14 @@ export async function POST(request: Request) {
       .select("display_name")
       .eq("id", authorId)
       .single();
+
+    const allowedUsers = Array.isArray(projectData?.allowed_users)
+      ? projectData?.allowed_users
+      : [];
+
+    if (!allowedUsers.includes(user.id)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const projectName = projectData?.name ?? "Project";
     const authorName = authorProfile?.display_name ?? "Team member";
@@ -76,7 +123,9 @@ export async function POST(request: Request) {
     const emailService = new EmailNotificationService();
     const projectUrl = `${process.env.APP_BASE_URL ?? "https://projects.golcentres.co.uk"}/projects/${projectId}`;
 
-    const uniqueIds = [...new Set(mentionedUserIds)].filter((id) => id !== authorId);
+    const uniqueIds = [...new Set(mentionedUserIds)]
+      .filter((id) => id !== authorId)
+      .filter((id) => allowedUsers.includes(id));
     const results: Array<{ userId: string; success: boolean }> = [];
 
     for (const userId of uniqueIds) {
