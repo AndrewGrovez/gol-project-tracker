@@ -40,7 +40,7 @@ export default function MyTasks() {
     direction: "asc" | "desc";
   }>({ column: "due_date", direction: "asc" });
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const projectOptions = useMemo(() => {
     const entries = new Map<string, string>();

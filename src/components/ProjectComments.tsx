@@ -37,7 +37,7 @@ export default function ProjectComments({ projectId }: ProjectCommentsProps) {
   const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(null);
   const [replyingToAuthorName, setReplyingToAuthorName] = useState<string | undefined>(undefined);
   const [supportsThreading, setSupportsThreading] = useState(true);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Get current user's ID

@@ -24,7 +24,7 @@ export default function ProjectList() {
   const [completedOpen, setCompletedOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter>("all");
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [displayName, setDisplayName] = useState<string>("");
   const [currentUserId, setCurrentUserId] = useState<string>("");
 

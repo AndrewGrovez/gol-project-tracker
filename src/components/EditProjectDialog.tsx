@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,7 +24,7 @@ interface EditProjectDialogProps {
 }
 
 export default function EditProjectDialog({ project, onProjectUpdated }: EditProjectDialogProps) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description || "");

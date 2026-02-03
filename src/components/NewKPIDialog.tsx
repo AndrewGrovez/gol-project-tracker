@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -22,7 +22,7 @@ interface NewKPIDialogProps {
 }
 
 export default function NewKPIDialog({ projectId, onKPICreated }: NewKPIDialogProps) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), [])
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState("")
   const [measureDate, setMeasureDate] = useState<Date | null>(null)

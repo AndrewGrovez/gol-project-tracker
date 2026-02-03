@@ -2,7 +2,7 @@
 // This component provides a visual timeline of project tasks
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { addDays, format, differenceInDays, isAfter, isBefore, isToday } from "date-fns";
 import { createClient } from "@/utils/supabase/client";
 import type { Task } from "@/types/database.types";
@@ -24,7 +24,7 @@ export default function ProjectTimeline({ projectId }: ProjectTimelineProps) {
   const [timelineEnd, setTimelineEnd] = useState<Date>(addDays(new Date(), 30));
   const [hoveredTask, setHoveredTask] = useState<Task | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   // Number of days to display in the timeline
   const daysToShow = 30;

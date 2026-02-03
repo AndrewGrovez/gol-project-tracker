@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import {
@@ -34,7 +34,7 @@ interface MenuItem {
 const Sidebar = () => {
   const router = useRouter();
   const pathname = usePathname();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const { isCollapsed, setIsCollapsed } = useSidebar();
   
   // Consolidated state

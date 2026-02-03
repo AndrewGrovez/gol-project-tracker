@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, Clock, AlertTriangle, Activity, MessageSquare } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
@@ -74,7 +74,7 @@ export default function DashboardContent({ userId }: DashboardContentProps) {
     upcoming: [],
   });
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     async function fetchDashboardData() {

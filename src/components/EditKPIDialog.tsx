@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -22,7 +22,7 @@ interface EditKPIDialogProps {
 }
 
 export default function EditKPIDialog({ kpi, onKPIUpdated }: EditKPIDialogProps) {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState(kpi.title)
   const [measureDate, setMeasureDate] = useState<Date | null>(

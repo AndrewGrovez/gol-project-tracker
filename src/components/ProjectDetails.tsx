@@ -112,7 +112,7 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
     direction: "asc",
   });
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   // Fetch project details, tasks, and KPIs
   useEffect(() => {

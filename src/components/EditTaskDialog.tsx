@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,7 +23,7 @@ interface EditTaskDialogProps {
 }
 
 export default function EditTaskDialog({ task, onTaskUpdated }: EditTaskDialogProps) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(task.title);

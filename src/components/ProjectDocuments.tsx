@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import type { ProjectDocument } from "@/types/database.types";
 import { Button } from "@/components/ui/button";
@@ -56,7 +56,7 @@ const getDocumentMeta = (url: string) => {
 };
 
 export default function ProjectDocuments({ projectId }: ProjectDocumentsProps) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
