@@ -9,6 +9,7 @@ import { ExternalLink, FileSpreadsheet, FileText, Link2, Trash2 } from "lucide-r
 
 interface ProjectDocumentsProps {
   projectId: string;
+  onCountChange?: (count: number) => void;
 }
 
 type DocumentKind = "doc" | "sheet" | "unknown";
@@ -55,7 +56,7 @@ const getDocumentMeta = (url: string) => {
   };
 };
 
-export default function ProjectDocuments({ projectId }: ProjectDocumentsProps) {
+export default function ProjectDocuments({ projectId, onCountChange }: ProjectDocumentsProps) {
   const supabase = useMemo(() => createClient(), []);
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [title, setTitle] = useState("");
@@ -89,6 +90,10 @@ export default function ProjectDocuments({ projectId }: ProjectDocumentsProps) {
 
     fetchDocuments();
   }, [projectId, supabase]);
+
+  useEffect(() => {
+    onCountChange?.(documents.length);
+  }, [documents.length, onCountChange]);
 
   const handleAddDocument = async (event: React.FormEvent) => {
     event.preventDefault();

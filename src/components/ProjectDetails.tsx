@@ -84,6 +84,7 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [commentCount, setCommentCount] = useState(0);
+  const [documentCount, setDocumentCount] = useState(0);
   // Profiles fetched from the profiles table for assignment options
   const [profiles, setProfiles] = useState<{ id: string; display_name: string }[]>([]);
 
@@ -153,10 +154,20 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
           console.error("Error fetching comment count:", commentCountError);
         }
 
+        const { count: documentCountResult, error: documentCountError } = await supabase
+          .from("project_documents")
+          .select("id", { count: "exact", head: true })
+          .eq("project_id", id);
+
+        if (documentCountError) {
+          console.error("Error fetching document count:", documentCountError);
+        }
+
         setProject(projectData);
         setTasks(taskData || []);
         setKpis(kpiData || []);
         setCommentCount(commentCountResult ?? 0);
+        setDocumentCount(documentCountResult ?? 0);
       } catch (err) {
         console.error("Error:", err);
         setError("Failed to load project details");
@@ -555,6 +566,15 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                 }`}
               >
                 Tasks
+                <span
+                  className={`ml-2 inline-flex min-w-[1.5rem] items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    activeTab === "tasks"
+                      ? "bg-[#1c3145]/10 text-[#1c3145]"
+                      : "bg-white/20 text-white/80"
+                  }`}
+                >
+                  {tasks.length}
+                </span>
               </button>
               <button
                 type="button"
@@ -566,6 +586,15 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                 }`}
               >
                 KPIs
+                <span
+                  className={`ml-2 inline-flex min-w-[1.5rem] items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    activeTab === "kpis"
+                      ? "bg-[#1c3145]/10 text-[#1c3145]"
+                      : "bg-white/20 text-white/80"
+                  }`}
+                >
+                  {kpis.length}
+                </span>
               </button>
               <button
                 type="button"
@@ -597,6 +626,15 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                 }`}
               >
                 Docs & Sheets
+                <span
+                  className={`ml-2 inline-flex min-w-[1.5rem] items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    activeTab === "docs"
+                      ? "bg-[#1c3145]/10 text-[#1c3145]"
+                      : "bg-white/20 text-white/80"
+                  }`}
+                >
+                  {documentCount}
+                </span>
               </button>
             </div>
 
@@ -1049,7 +1087,9 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                 <ProjectComments projectId={project.id} onCountChange={setCommentCount} />
               ) : null}
 
-              {activeTab === "docs" ? <ProjectDocuments projectId={project.id} /> : null}
+              {activeTab === "docs" ? (
+                <ProjectDocuments projectId={project.id} onCountChange={setDocumentCount} />
+              ) : null}
             </div>
           </div>
         </section>
