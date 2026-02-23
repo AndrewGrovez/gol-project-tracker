@@ -3,7 +3,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import type { Task, Project } from "@/types/database.types";
 import {
-  Activity,
   CheckCircle,
   Clock,
   AlertTriangle,
@@ -208,22 +207,6 @@ export default function MyTasks() {
       }
     ];
   }, [filteredTasks]);
-
-  // Helper to render status icon
-  const getTaskStatusIcon = (status: Task["status"]) => {
-    switch (status) {
-      case "completed":
-        return <CheckCircle className="w-4 h-4 text-emerald-500" />;
-      case "in_progress":
-        return <Activity className="w-4 h-4 text-[#81bb26]" />;
-      case "todo":
-        return <Clock className="w-4 h-4 text-slate-400" />;
-      case "blocked":
-        return <AlertTriangle className="w-4 h-4 text-rose-500" />;
-      default:
-        return null;
-    }
-  };
 
   // Sorting logic: sort tasks based on the current sort configuration
   const sortedTasks = useMemo(() => {
@@ -539,12 +522,11 @@ export default function MyTasks() {
                                 <td className="px-6 py-3 whitespace-normal break-words text-sm text-gray-900">
                                   {task.title}
                                 </td>
-                                <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-600">
+                                <td className="px-6 py-3 whitespace-normal break-words text-sm text-slate-600">
                                   {task.project.name}
                                 </td>
                                 <td className="px-6 py-3 whitespace-nowrap text-sm">
                                   <div className="flex items-center gap-2">
-                                    {getTaskStatusIcon(task.status)}
                                     <Select
                                       value={task.status}
                                       className="min-w-[110px] text-xs"
@@ -652,12 +634,11 @@ export default function MyTasks() {
                                 <td className="px-6 py-3 whitespace-normal break-words text-sm text-gray-900">
                                   {task.title}
                                 </td>
-                                <td className="px-6 py-3 whitespace-nowrap text-sm text-slate-600">
+                                <td className="px-6 py-3 whitespace-normal break-words text-sm text-slate-600">
                                   {task.project.name}
                                 </td>
                                 <td className="px-6 py-3 whitespace-nowrap text-sm">
                                   <div className="flex items-center gap-2">
-                                    {getTaskStatusIcon(task.status)}
                                     <Select
                                       value={task.status}
                                       className="min-w-[110px] text-xs"
