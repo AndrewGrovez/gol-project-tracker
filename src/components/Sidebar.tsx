@@ -84,7 +84,7 @@ const Sidebar = () => {
     { icon: PieChart, label: "Churn Analysis", path: "/churn-analysis" },
     { icon: Trophy, label: "League Analysis", path: "/league-organisers" },
     { isHeader: true, label: "Bookings" },
-    { icon: Users, label: "BB Analysis", path: "/block-bookers" },
+
     { icon: Calendar, label: "Bookings Analysis", path: "/bookings-analysis" },
     { isHeader: true, label: "Analytics" },
     { icon: ChartLine, label: "Social Analytics", path: "/social-analytics" },
