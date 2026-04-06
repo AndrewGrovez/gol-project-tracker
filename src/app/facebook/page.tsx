@@ -1,4 +1,4 @@
-import FacebookScheduler from "@/components/facebook/FacebookScheduler";
+import SocialScheduler from "@/components/social/SocialScheduler";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -10,5 +10,5 @@ export default async function FacebookPage() {
     redirect("/login");
   }
 
-  return <FacebookScheduler />;
+  return <SocialScheduler />;
 }

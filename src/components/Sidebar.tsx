@@ -18,6 +18,7 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  CalendarClock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
@@ -86,6 +87,8 @@ const Sidebar = () => {
     { isHeader: true, label: "Bookings" },
 
     { icon: Calendar, label: "Bookings Analysis", path: "/bookings-analysis" },
+    { isHeader: true, label: "Marketing" },
+    { icon: CalendarClock, label: "Social Scheduler", path: "/facebook" },
     { isHeader: true, label: "Analytics" },
     { icon: ChartLine, label: "Social Analytics", path: "/social-analytics" },
     { icon: BarChart2, label: "Web Analytics", path: "/web-analytics" },
