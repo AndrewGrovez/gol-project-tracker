@@ -13,7 +13,6 @@ import {
   LogOut,
   LayoutDashboard,
   PieChart,
-  Users,
   Trophy,
   Calendar,
   ChevronLeft,

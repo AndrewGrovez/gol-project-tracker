@@ -338,8 +338,13 @@ export async function POST(req: Request) {
 
     await Promise.all(tasks);
 
-    const hasErrors = Object.values(platformResults).some((results) =>
-      results?.some((r) => r.error)
+    const resultsByPlatform = [
+      platformResults.facebook,
+      platformResults.instagram,
+    ].filter((results): results is ScheduleResult[] => Boolean(results));
+
+    const hasErrors = resultsByPlatform.some((results) =>
+      results.some((result) => Boolean(result.error))
     );
 
     return NextResponse.json(
