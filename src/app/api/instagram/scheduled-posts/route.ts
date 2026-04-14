@@ -47,7 +47,7 @@ export async function GET() {
         error_message: row.error_message,
       })),
       notice:
-        "Instagram posts shown here are managed by the app queue and published through the immediate Instagram publish API when due.",
+        "Instagram posts shown here are managed by the app queue and published through the immediate Instagram publish API within a few minutes of the scheduled time.",
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected server error.";

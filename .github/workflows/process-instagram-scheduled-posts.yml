@@ -1,0 +1,46 @@
+name: Process Instagram Scheduled Posts
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: process-instagram-scheduled-posts
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      id-token: write
+    env:
+      AUDIENCE: instagram-scheduler
+      SCHEDULER_URL: https://projects.golcentres.co.uk/api/instagram/process-scheduled
+    steps:
+      - name: Trigger Instagram scheduler
+        run: |
+          oidc_response=$(curl -sS \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${AUDIENCE}")
+
+          oidc_token=$(OIDC_RESPONSE="${oidc_response}" python - <<'PY'
+          import json
+          import os
+
+          print(json.loads(os.environ["OIDC_RESPONSE"])["value"])
+          PY
+          )
+
+          http_code=$(curl -sS -o /tmp/instagram-scheduler-response.json -w "%{http_code}" \
+            -X POST "${SCHEDULER_URL}" \
+            -H "Authorization: Bearer ${oidc_token}")
+
+          cat /tmp/instagram-scheduler-response.json
+
+          if [ "${http_code}" -ge 400 ]; then
+            echo
+            echo "Instagram scheduler request failed with status ${http_code}"
+            exit 1
+          fi

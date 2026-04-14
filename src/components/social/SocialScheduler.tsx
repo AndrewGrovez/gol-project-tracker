@@ -293,7 +293,7 @@ export default function SocialScheduler() {
           } else {
             lines.push(
               platform === "instagram"
-                ? `${label} ${time} — queued for app-managed publish`
+                ? `${label} ${time} — queued for automatic publish`
                 : `${label} ${time} — scheduled`
             );
             anySuccess = true;
@@ -385,7 +385,7 @@ export default function SocialScheduler() {
               </div>
               {platforms.has("instagram") && (
                 <p className="text-xs text-amber-600">
-                  Instagram requires an image. Posts are queued by the app and published automatically when due.
+                  Instagram requires an image. Posts are queued by the app and published automatically within a few minutes of the scheduled time.
                 </p>
               )}
             </div>
@@ -494,7 +494,7 @@ export default function SocialScheduler() {
             <div>
               <h2 className="text-xl font-semibold text-slate-900">Scheduled posts</h2>
               <p className="text-sm text-slate-600">
-                Facebook is pulled from Meta. Instagram reflects the app-managed publish queue.
+                Facebook is pulled from Meta. Instagram reflects the app-managed publish queue, which is processed automatically every 5 minutes.
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
