@@ -1,46 +1,56 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/utils/supabase/server";
 
-const ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN;
-const IG_ACCOUNT_ID = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
-
-interface ScheduledPost {
+interface InstagramScheduledPostRow {
   id: string;
-  caption?: string;
-  timestamp?: string;
-  scheduled_publish_time?: number;
-  status?: string;
+  caption: string;
+  scheduled_for: string;
+  status: string;
+  error_message: string | null;
 }
 
 export async function GET() {
-  if (!ACCESS_TOKEN || !IG_ACCOUNT_ID) {
-    return NextResponse.json(
-      { error: "INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_BUSINESS_ACCOUNT_ID must be configured." },
-      { status: 500 }
-    );
-  }
-
   try {
-    const url = new URL(`https://graph.facebook.com/v22.0/${IG_ACCOUNT_ID}/scheduled_posts`);
-    url.searchParams.set("fields", "id,caption,timestamp,scheduled_publish_time,status");
-    url.searchParams.set("limit", "50");
-    url.searchParams.set("access_token", ACCESS_TOKEN);
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    const response = await fetch(url, { cache: "no-store" });
-    const data = await response.json() as {
-      data?: ScheduledPost[];
-      error?: { message?: string };
-    };
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!response.ok) {
+    const { data, error } = await supabase
+      .from("instagram_scheduled_posts")
+      .select("id, caption, scheduled_for, status, error_message")
+      .eq("created_by", user.id)
+      .neq("status", "published")
+      .order("scheduled_for", { ascending: true })
+      .limit(50);
+
+    if (error) {
       return NextResponse.json(
-        { error: data?.error?.message || "Failed to fetch Instagram scheduled posts." },
-        { status: response.status }
+        { error: error.message || "Failed to fetch Instagram scheduled posts." },
+        { status: 500 }
       );
     }
 
-    return NextResponse.json({ data: data.data ?? [] });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unexpected server error.";
+    const rows = Array.isArray(data) ? (data as InstagramScheduledPostRow[]) : [];
+
+    return NextResponse.json({
+      data: rows.map((row) => ({
+        id: row.id,
+        caption: row.caption,
+        scheduled_publish_time: Math.floor(new Date(row.scheduled_for).getTime() / 1000),
+        status: row.status,
+        error_message: row.error_message,
+      })),
+      notice:
+        "Instagram posts shown here are managed by the app queue and published through the immediate Instagram publish API when due.",
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unexpected server error.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -27,6 +27,7 @@ interface InstagramScheduledPost {
   timestamp?: string;
   scheduled_publish_time?: number;
   status?: string;
+  error_message?: string | null;
 }
 
 interface ScheduleResult {
@@ -43,7 +44,7 @@ interface PlatformResults {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const FB_MIN_LEAD_MS = 10 * 60 * 1000;
-const IG_MIN_LEAD_MS = 20 * 60 * 1000;
+const IG_MIN_LEAD_MS = 5 * 60 * 1000;
 const DEFAULT_LEAD_MS = 60 * 60 * 1000; // 1 hour
 
 const buildDefaultDate = () => new Date(Date.now() + DEFAULT_LEAD_MS);
@@ -102,6 +103,9 @@ export default function SocialScheduler() {
   const [isFetchingIg, setIsFetchingIg] = useState(false);
   const [fbError, setFbError] = useState<string | null>(null);
   const [igError, setIgError] = useState<string | null>(null);
+  const [igNotice, setIgNotice] = useState<string | null>(null);
+  const [isProcessingIgQueue, setIsProcessingIgQueue] = useState(false);
+  const [igQueueFeedback, setIgQueueFeedback] = useState<string | null>(null);
 
   const resetForm = useCallback(() => {
     setMessage("");
@@ -156,13 +160,15 @@ export default function SocialScheduler() {
   const fetchInstagramPosts = useCallback(async () => {
     setIsFetchingIg(true);
     setIgError(null);
+    setIgNotice(null);
     try {
       const res = await fetch("/api/instagram/scheduled-posts", { method: "GET", cache: "no-store" });
-      const data = await res.json();
+      const data = await res.json() as { data?: InstagramScheduledPost[]; error?: string; notice?: string };
       if (!res.ok) {
         setIgError(data?.error || "Unable to load Instagram scheduled posts.");
       } else {
         setInstagramPosts(Array.isArray(data?.data) ? data.data : []);
+        setIgNotice(data?.notice || null);
       }
     } catch (err) {
       setIgError(err instanceof Error ? err.message : "Unexpected error.");
@@ -170,6 +176,43 @@ export default function SocialScheduler() {
       setIsFetchingIg(false);
     }
   }, []);
+
+  const processInstagramQueue = useCallback(async () => {
+    setIsProcessingIgQueue(true);
+    setIgQueueFeedback(null);
+    try {
+      const response = await fetch("/api/instagram/process-scheduled", { method: "POST" });
+      const payload = await response.json() as {
+        error?: string;
+        processed?: number;
+        published?: number;
+        failed?: number;
+      };
+
+      if (!response.ok) {
+        setIgQueueFeedback(payload?.error || "Unable to process queued Instagram posts.");
+        return;
+      }
+
+      const processed = payload?.processed ?? 0;
+      const published = payload?.published ?? 0;
+      const failed = payload?.failed ?? 0;
+
+      setIgQueueFeedback(
+        processed === 0
+          ? "No Instagram posts were due."
+          : `Processed ${processed} due Instagram post${processed === 1 ? "" : "s"}: ${published} published, ${failed} failed.`
+      );
+
+      fetchInstagramPosts();
+    } catch (error) {
+      setIgQueueFeedback(
+        error instanceof Error ? error.message : "Unable to process queued Instagram posts."
+      );
+    } finally {
+      setIsProcessingIgQueue(false);
+    }
+  }, [fetchInstagramPosts]);
 
   const fetchAll = useCallback(() => {
     fetchFacebookPosts();
@@ -248,7 +291,11 @@ export default function SocialScheduler() {
             lines.push(`${label} ${time} — ${result.error}`);
             anyError = true;
           } else {
-            lines.push(`${label} ${time} — scheduled`);
+            lines.push(
+              platform === "instagram"
+                ? `${label} ${time} — queued for app-managed publish`
+                : `${label} ${time} — scheduled`
+            );
             anySuccess = true;
           }
         }
@@ -338,7 +385,7 @@ export default function SocialScheduler() {
               </div>
               {platforms.has("instagram") && (
                 <p className="text-xs text-amber-600">
-                  Instagram requires an image and schedules at least 20 minutes ahead.
+                  Instagram requires an image. Posts are queued by the app and published automatically when due.
                 </p>
               )}
             </div>
@@ -447,24 +494,42 @@ export default function SocialScheduler() {
             <div>
               <h2 className="text-xl font-semibold text-slate-900">Scheduled posts</h2>
               <p className="text-sm text-slate-600">
-                Pulled directly from each platform. Refresh after scheduling to see updates.
+                Facebook is pulled from Meta. Instagram reflects the app-managed publish queue.
               </p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={fetchAll}
-              disabled={isFetchingFb || isFetchingIg}
-              className="flex items-center gap-2"
-            >
-              {isFetchingFb || isFetchingIg ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
-              Refresh
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={fetchAll}
+                disabled={isFetchingFb || isFetchingIg}
+                className="flex items-center gap-2"
+              >
+                {isFetchingFb || isFetchingIg ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                Refresh
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={processInstagramQueue}
+                disabled={isProcessingIgQueue}
+                className="flex items-center gap-2"
+              >
+                {isProcessingIgQueue && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isProcessingIgQueue ? "Publishing due posts..." : "Publish due Instagram"}
+              </Button>
+            </div>
           </div>
+
+          {igQueueFeedback && (
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+              {igQueueFeedback}
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="mb-4 flex gap-1 border-b border-slate-200">
@@ -491,6 +556,12 @@ export default function SocialScheduler() {
             </div>
           )}
 
+          {!tabError && activeTab === "instagram" && igNotice && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+              {igNotice}
+            </div>
+          )}
+
           {!tabError && isFetching && (
             <div className="flex items-center gap-2 text-sm text-slate-600">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading scheduled posts...
@@ -501,7 +572,7 @@ export default function SocialScheduler() {
             <p className="text-sm text-slate-600">No Facebook scheduled posts found.</p>
           )}
 
-          {!isFetching && !tabError && activeTab === "instagram" && instagramPosts.length === 0 && (
+          {!isFetching && !tabError && activeTab === "instagram" && !igNotice && instagramPosts.length === 0 && (
             <p className="text-sm text-slate-600">No Instagram scheduled posts found.</p>
           )}
 
@@ -568,7 +639,12 @@ export default function SocialScheduler() {
                           {scheduledDate ? format(scheduledDate, "dd MMM yyyy HH:mm") : "—"}
                         </td>
                         <td className="px-4 py-3 align-top text-slate-700">
-                          {post.status ? post.status.replace(/_/g, " ") : "—"}
+                          <div className="space-y-1">
+                            <p>{post.status ? post.status.replace(/_/g, " ") : "—"}</p>
+                            {post.error_message && (
+                              <p className="max-w-[320px] text-xs text-red-600">{post.error_message}</p>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );

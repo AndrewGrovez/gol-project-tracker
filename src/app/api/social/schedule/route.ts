@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient as createUserClient } from "@/utils/supabase/server";
+import { getInstagramPublishingConfigError } from "@/lib/social/instagram-publishing";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
 
 const FB_ACCESS_TOKEN = process.env.FACEBOOK_ACCESS_TOKEN;
 const FB_PAGE_ID = process.env.FACEBOOK_PAGE_ID;
-const IG_ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN;
-const IG_ACCOUNT_ID = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
 
-const FB_MIN_LEAD_SECONDS = 10 * 60; // 10 minutes
-const FB_MAX_LEAD_SECONDS = 75 * 24 * 60 * 60; // 75 days
-const IG_MIN_LEAD_SECONDS = 20 * 60; // 20 minutes
-const IG_MAX_LEAD_SECONDS = 75 * 24 * 60 * 60; // 75 days
+const FB_MIN_LEAD_SECONDS = 10 * 60;
+const FB_MAX_LEAD_SECONDS = 75 * 24 * 60 * 60;
+const IG_MIN_LEAD_SECONDS = 5 * 60;
 
 const STORAGE_BUCKET = "social-scheduler";
 
@@ -24,19 +23,32 @@ interface PlatformResults {
   instagram?: ScheduleResult[];
 }
 
-// ─── Supabase image upload ────────────────────────────────────────────────────
+interface InstagramQueuedInsert {
+  created_by: string;
+  caption: string;
+  image_url: string;
+  scheduled_for: string;
+}
+
+const createServiceRoleClient = () =>
+  createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    }
+  );
 
 async function uploadImageToSupabase(
   buffer: ArrayBuffer,
   mime: string,
   name: string
 ): Promise<string> {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const supabase = createServiceRoleClient();
 
-  // Ensure bucket exists (no-op if already present)
   await supabase.storage.createBucket(STORAGE_BUCKET, { public: true }).catch(() => null);
 
   const path = `instagram/${Date.now()}-${name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
@@ -44,13 +56,13 @@ async function uploadImageToSupabase(
     .from(STORAGE_BUCKET)
     .upload(path, buffer, { contentType: mime, upsert: false });
 
-  if (error) throw new Error(`Image upload failed: ${error.message}`);
+  if (error) {
+    throw new Error(`Image upload failed: ${error.message}`);
+  }
 
   const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }
-
-// ─── Facebook ─────────────────────────────────────────────────────────────────
 
 async function scheduleFacebookPost(
   message: string,
@@ -93,8 +105,12 @@ async function scheduleFacebookPost(
   if (!response.ok) {
     const err = data?.error;
     let msg = err?.message || "Facebook API error.";
-    if (err?.error_subcode === 1363168) msg = "Facebook scheduling only allows dates within 75 days.";
-    if (err?.error_subcode === 1363169) msg = "Facebook scheduling requires dates at least 10 minutes ahead.";
+    if (err?.error_subcode === 1363168) {
+      msg = "Facebook scheduling only allows dates within 75 days.";
+    }
+    if (err?.error_subcode === 1363169) {
+      msg = "Facebook scheduling requires dates at least 10 minutes ahead.";
+    }
     throw new Error(msg);
   }
 
@@ -110,8 +126,8 @@ async function processFacebook(
   imageName: string
 ): Promise<ScheduleResult[]> {
   if (!FB_ACCESS_TOKEN || !FB_PAGE_ID) {
-    return scheduledTimes.map((t) => ({
-      scheduledTime: t,
+    return scheduledTimes.map((scheduledTime) => ({
+      scheduledTime,
       error: "FACEBOOK_ACCESS_TOKEN and FACEBOOK_PAGE_ID are not configured.",
     }));
   }
@@ -120,7 +136,7 @@ async function processFacebook(
 
   for (const isoTime of scheduledTimes) {
     const date = new Date(isoTime);
-    if (isNaN(date.getTime())) {
+    if (Number.isNaN(date.getTime())) {
       results.push({ scheduledTime: isoTime, error: "Invalid date." });
       continue;
     }
@@ -132,6 +148,7 @@ async function processFacebook(
       results.push({ scheduledTime: isoTime, error: "Must be at least 10 minutes in the future." });
       continue;
     }
+
     if (lead > FB_MAX_LEAD_SECONDS) {
       results.push({ scheduledTime: isoTime, error: "Must be within 75 days." });
       continue;
@@ -146,10 +163,10 @@ async function processFacebook(
         imageName
       );
       results.push({ scheduledTime: isoTime, externalId });
-    } catch (err) {
+    } catch (error) {
       results.push({
         scheduledTime: isoTime,
-        error: err instanceof Error ? err.message : "Unexpected error.",
+        error: error instanceof Error ? error.message : "Unexpected error.",
       });
     }
   }
@@ -157,91 +174,47 @@ async function processFacebook(
   return results;
 }
 
-// ─── Instagram ────────────────────────────────────────────────────────────────
-
-async function scheduleInstagramPost(
-  caption: string,
-  scheduledSeconds: number,
-  imageUrl: string
-): Promise<string | undefined> {
-  // Step 1: create media container
-  const containerParams = new URLSearchParams({
-    image_url: imageUrl,
-    caption,
-    scheduled_publish_time: scheduledSeconds.toString(),
-    published: "false",
-    access_token: IG_ACCESS_TOKEN!,
-  });
-
-  const containerRes = await fetch(
-    `https://graph.facebook.com/v22.0/${IG_ACCOUNT_ID}/media`,
-    { method: "POST", body: containerParams }
-  );
-  const containerData = await containerRes.json();
-
-  if (!containerRes.ok) {
-    const msg = containerData?.error?.message || "Failed to create Instagram media container.";
-    throw new Error(msg);
-  }
-
-  const creationId = containerData.id as string;
-
-  // Step 2: publish (Instagram holds until scheduled_publish_time)
-  const publishParams = new URLSearchParams({
-    creation_id: creationId,
-    access_token: IG_ACCESS_TOKEN!,
-  });
-
-  const publishRes = await fetch(
-    `https://graph.facebook.com/v22.0/${IG_ACCOUNT_ID}/media_publish`,
-    { method: "POST", body: publishParams }
-  );
-  const publishData = await publishRes.json();
-
-  if (!publishRes.ok) {
-    const msg = publishData?.error?.message || "Failed to schedule Instagram post.";
-    throw new Error(msg);
-  }
-
-  return publishData.id as string | undefined;
-}
-
-async function processInstagram(
+async function queueInstagramPosts(
   caption: string,
   scheduledTimes: string[],
   nowSeconds: number,
   imageBuffer: ArrayBuffer | null,
   imageMime: string,
-  imageName: string
+  imageName: string,
+  createdByUserId: string
 ): Promise<ScheduleResult[]> {
-  if (!IG_ACCESS_TOKEN || !IG_ACCOUNT_ID) {
-    return scheduledTimes.map((t) => ({
-      scheduledTime: t,
-      error: "INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_BUSINESS_ACCOUNT_ID are not configured.",
+  const configError = getInstagramPublishingConfigError();
+  if (configError) {
+    return scheduledTimes.map((scheduledTime) => ({
+      scheduledTime,
+      error: configError,
     }));
   }
 
   if (!imageBuffer) {
-    return scheduledTimes.map((t) => ({
-      scheduledTime: t,
+    return scheduledTimes.map((scheduledTime) => ({
+      scheduledTime,
       error: "Instagram requires an image.",
     }));
   }
 
-  // Upload once, reuse URL for all scheduled times
   let imageUrl: string;
   try {
     imageUrl = await uploadImageToSupabase(imageBuffer, imageMime, imageName);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Image upload failed.";
-    return scheduledTimes.map((t) => ({ scheduledTime: t, error: msg }));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Image upload failed.";
+    return scheduledTimes.map((scheduledTime) => ({
+      scheduledTime,
+      error: message,
+    }));
   }
 
   const results: ScheduleResult[] = [];
+  const jobsToQueue: Array<{ scheduledTime: string; row: InstagramQueuedInsert }> = [];
 
   for (const isoTime of scheduledTimes) {
     const date = new Date(isoTime);
-    if (isNaN(date.getTime())) {
+    if (Number.isNaN(date.getTime())) {
       results.push({ scheduledTime: isoTime, error: "Invalid date." });
       continue;
     }
@@ -250,33 +223,69 @@ async function processInstagram(
     const lead = scheduledSeconds - nowSeconds;
 
     if (lead < IG_MIN_LEAD_SECONDS) {
-      results.push({ scheduledTime: isoTime, error: "Instagram requires at least 20 minutes lead time." });
-      continue;
-    }
-    if (lead > IG_MAX_LEAD_SECONDS) {
-      results.push({ scheduledTime: isoTime, error: "Must be within 75 days." });
-      continue;
-    }
-
-    try {
-      const externalId = await scheduleInstagramPost(caption, scheduledSeconds, imageUrl);
-      results.push({ scheduledTime: isoTime, externalId });
-    } catch (err) {
       results.push({
         scheduledTime: isoTime,
-        error: err instanceof Error ? err.message : "Unexpected error.",
+        error: "Instagram queueing requires dates at least 5 minutes in the future.",
       });
+      continue;
     }
+
+    jobsToQueue.push({
+      scheduledTime: isoTime,
+      row: {
+        created_by: createdByUserId,
+        caption,
+        image_url: imageUrl,
+        scheduled_for: date.toISOString(),
+      },
+    });
   }
 
-  return results;
+  if (jobsToQueue.length === 0) {
+    return results;
+  }
+
+  const supabase = createServiceRoleClient();
+  const { data, error } = await supabase
+    .from("instagram_scheduled_posts")
+    .insert(jobsToQueue.map((job) => job.row))
+    .select("id");
+
+  if (error) {
+    return [
+      ...results,
+      ...jobsToQueue.map((job) => ({
+        scheduledTime: job.scheduledTime,
+        error: `Failed to queue Instagram post: ${error.message}`,
+      })),
+    ];
+  }
+
+  const insertedRows = Array.isArray(data) ? data : [];
+
+  return [
+    ...results,
+    ...jobsToQueue.map((job, index) => ({
+      scheduledTime: job.scheduledTime,
+      externalId:
+        typeof insertedRows[index]?.id === "string" ? insertedRows[index].id : undefined,
+    })),
+  ];
 }
 
-// ─── Route handler ────────────────────────────────────────────────────────────
-
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const formData = await req.formData();
+    const supabase = await createUserClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const formData = await request.formData();
     const message = (formData.get("message")?.toString() ?? "").trim();
     const scheduledTimesRaw = formData.get("scheduledTimes");
     const platformsRaw = formData.get("platforms");
@@ -294,7 +303,10 @@ export async function POST(req: Request) {
     try {
       scheduledTimes = JSON.parse(scheduledTimesRaw.toString());
     } catch {
-      return NextResponse.json({ error: "scheduledTimes must be a JSON array of ISO strings." }, { status: 400 });
+      return NextResponse.json(
+        { error: "scheduledTimes must be a JSON array of ISO strings." },
+        { status: 400 }
+      );
     }
 
     if (!Array.isArray(scheduledTimes) || scheduledTimes.length === 0) {
@@ -306,7 +318,7 @@ export async function POST(req: Request) {
       try {
         platforms = JSON.parse(platformsRaw.toString());
       } catch {
-        // ignore, default to facebook
+        platforms = ["facebook"];
       }
     }
 
@@ -317,31 +329,39 @@ export async function POST(req: Request) {
     const imageName = image?.name || "image.jpg";
 
     const platformResults: PlatformResults = {};
-
     const tasks: Promise<void>[] = [];
 
     if (platforms.includes("facebook")) {
       tasks.push(
         processFacebook(message, scheduledTimes, nowSeconds, imageBuffer, imageMime, imageName).then(
-          (r) => { platformResults.facebook = r; }
+          (results) => {
+            platformResults.facebook = results;
+          }
         )
       );
     }
 
     if (platforms.includes("instagram")) {
       tasks.push(
-        processInstagram(message, scheduledTimes, nowSeconds, imageBuffer, imageMime, imageName).then(
-          (r) => { platformResults.instagram = r; }
-        )
+        queueInstagramPosts(
+          message,
+          scheduledTimes,
+          nowSeconds,
+          imageBuffer,
+          imageMime,
+          imageName,
+          user.id
+        ).then((results) => {
+          platformResults.instagram = results;
+        })
       );
     }
 
     await Promise.all(tasks);
 
-    const resultsByPlatform = [
-      platformResults.facebook,
-      platformResults.instagram,
-    ].filter((results): results is ScheduleResult[] => Boolean(results));
+    const resultsByPlatform = [platformResults.facebook, platformResults.instagram].filter(
+      (results): results is ScheduleResult[] => Boolean(results)
+    );
 
     const hasErrors = resultsByPlatform.some((results) =>
       results.some((result) => Boolean(result.error))
@@ -351,8 +371,8 @@ export async function POST(req: Request) {
       { success: !hasErrors, results: platformResults },
       { status: hasErrors ? 207 : 200 }
     );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unexpected server error.";
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unexpected server error.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

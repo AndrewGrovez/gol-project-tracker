@@ -34,3 +34,11 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Instagram Scheduler Cron
+
+Instagram scheduled posts are queued in Supabase and published by the app through
+`/api/instagram/process-scheduled`.
+
+When deployed on Vercel, `vercel.json` runs that route every minute in production.
+Set `CRON_SECRET` in the production environment so the cron invocation is accepted.
