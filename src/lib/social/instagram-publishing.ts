@@ -8,6 +8,12 @@ interface GraphApiError {
   error_user_msg?: string;
 }
 
+interface InstagramMediaEntry {
+  id: string;
+  caption?: string;
+  timestamp?: string;
+}
+
 const RETRYABLE_PUBLISH_PATTERNS = [
   /not (ready|finished)/i,
   /still processing/i,
@@ -53,6 +59,52 @@ async function publishContainer(creationId: string) {
   }
 
   return publishData.id as string | undefined;
+}
+
+export async function findRecentInstagramMediaByCaption(
+  caption: string,
+  scheduledForIso: string
+): Promise<InstagramMediaEntry | null> {
+  const configError = getInstagramPublishingConfigError();
+  if (configError) {
+    throw new Error(configError);
+  }
+
+  const scheduledAtMs = new Date(scheduledForIso).getTime();
+  if (Number.isNaN(scheduledAtMs)) {
+    return null;
+  }
+
+  const mediaUrl = new URL(`https://graph.facebook.com/v22.0/${IG_ACCOUNT_ID}/media`);
+  mediaUrl.searchParams.set("fields", "id,caption,timestamp");
+  mediaUrl.searchParams.set("limit", "25");
+  mediaUrl.searchParams.set("access_token", IG_ACCESS_TOKEN!);
+
+  const mediaRes = await fetch(mediaUrl, { cache: "no-store" });
+  const mediaData = await mediaRes.json() as {
+    data?: InstagramMediaEntry[];
+    error?: GraphApiError;
+  };
+
+  if (!mediaRes.ok) {
+    throw new Error(mapInstagramGraphError(mediaData?.error));
+  }
+
+  const earliestAllowedMs = scheduledAtMs - 60 * 60 * 1000;
+  const latestAllowedMs = Date.now() + 10 * 60 * 1000;
+
+  return (
+    mediaData.data?.find((entry) => {
+      const entryTimestampMs = entry.timestamp ? new Date(entry.timestamp).getTime() : NaN;
+
+      return (
+        entry.caption === caption &&
+        Number.isFinite(entryTimestampMs) &&
+        entryTimestampMs >= earliestAllowedMs &&
+        entryTimestampMs <= latestAllowedMs
+      );
+    }) ?? null
+  );
 }
 
 export async function publishInstagramImageNow(

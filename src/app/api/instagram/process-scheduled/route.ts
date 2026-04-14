@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient as createUserClient } from "@/utils/supabase/server";
 import {
+  findRecentInstagramMediaByCaption,
   getInstagramPublishingConfigError,
   publishInstagramImageNow,
 } from "@/lib/social/instagram-publishing";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
+
+export const maxDuration = 60;
 
 const DEFAULT_BATCH_SIZE = 10;
 const MAX_BATCH_SIZE = 25;
@@ -230,6 +233,39 @@ async function handleRequest(request: Request) {
 
   for (const job of jobs) {
     try {
+      const existingMedia = await findRecentInstagramMediaByCaption(
+        job.caption,
+        job.scheduled_for
+      ).catch(() => null);
+
+      if (existingMedia) {
+        const { error: existingUpdateError } = await supabase
+          .from("instagram_scheduled_posts")
+          .update({
+            status: "published",
+            published_at: existingMedia.timestamp
+              ? new Date(existingMedia.timestamp).toISOString()
+              : new Date().toISOString(),
+            instagram_media_id: existingMedia.id,
+            error_message: null,
+          })
+          .eq("id", job.id);
+
+        if (existingUpdateError) {
+          throw new Error(
+            `Instagram post already exists but job update failed: ${existingUpdateError.message}`
+          );
+        }
+
+        published += 1;
+        results.push({
+          id: job.id,
+          scheduledFor: job.scheduled_for,
+          status: "published",
+        });
+        continue;
+      }
+
       const mediaId = await publishInstagramImageNow(job.caption, job.image_url);
 
       const { error: updateError } = await supabase
