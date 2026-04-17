@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Projects — 6 Designs</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    html, body { margin: 0; padding: 0; background: #f0eee9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; }
+    @keyframes blink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
+    * { box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="components/shared.jsx"></script>
+  <script type="text/babel" src="components/design1.jsx"></script>
+  <script type="text/babel" src="components/design2.jsx"></script>
+  <script type="text/babel" src="components/design3.jsx"></script>
+  <script type="text/babel" src="components/design4.jsx"></script>
+  <script type="text/babel" src="components/design5.jsx"></script>
+  <script type="text/babel" src="components/design6.jsx"></script>
+
+  <script type="text/babel">
+    const AB_W = 1440;
+    const AB_H = 900;
+
+    function Artboard({ label, children }) {
+      return (
+        <DCArtboard label={label} width={AB_W} height={AB_H}>
+          <div data-screen-label={label} style={{ width: AB_W, height: AB_H, overflow: 'hidden' }}>
+            {children}
+          </div>
+        </DCArtboard>
+      );
+    }
+
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            title="Projects page — six directions"
+            subtitle="GOL brand (navy #1c3145, lime #81bb26). Same data, six ways of organising the same home screen."
+          >
+            <Artboard label="01 · Pitch Grid — stadium scoreboard cards, live match energy">
+              <Design1_PitchGrid/>
+            </Artboard>
+            <Artboard label="02 · Season Timeline — horizontal Gantt, grouped by category">
+              <Design2_Timeline/>
+            </Artboard>
+            <Artboard label="03 · Kanban Console — status board with sparklines">
+              <Design3_Kanban/>
+            </Artboard>
+          </DCSection>
+
+          <DCSection
+            title="Editorial · Dense · Focused"
+            subtitle="Three more flavours: magazine cover, power-user terminal, single-project spotlight."
+          >
+            <Artboard label="04 · Fixture Magazine — editorial hero & serif type">
+              <Design4_Magazine/>
+            </Artboard>
+            <Artboard label="05 · Ops Terminal — dense keyboard-first table">
+              <Design5_Terminal/>
+            </Artboard>
+            <Artboard label="06 · Focus Spotlight — one big thing at a time">
+              <Design6_Spotlight/>
+            </Artboard>
+          </DCSection>
+
+          <DCPostIt top={40} left={60} rotate={-3} width={230}>
+            Each artboard is a 1440×900 screen. Scroll / pinch-zoom to move around. Same 8 projects in each.
+          </DCPostIt>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

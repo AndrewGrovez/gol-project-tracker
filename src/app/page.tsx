@@ -1,4 +1,4 @@
-import ProjectList from '@/components/ProjectList'
+import ProjectSpotlight from '@/components/projects/ProjectSpotlight'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 
@@ -10,5 +10,5 @@ export default async function Home() {
     redirect('/login')
   }
 
-  return <ProjectList />
+  return <ProjectSpotlight />
 }
