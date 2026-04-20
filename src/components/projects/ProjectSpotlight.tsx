@@ -12,6 +12,7 @@ import FocusHero from "./FocusHero";
 import ProgressRingCard from "./ProgressRingCard";
 import TodayFocusList, { type FocusTask } from "./TodayFocusList";
 import Filmstrip from "./Filmstrip";
+import BoardView from "./BoardView";
 import { useSpotlightKeyboard } from "./useSpotlightKeyboard";
 import { BRAND, deriveProjectMeta } from "./spotlight-config";
 
@@ -28,7 +29,8 @@ type TaskRow = {
 type Profile = { id: string; display_name: string };
 
 const FOCUS_STORAGE_KEY = "spotlight:focusId";
-const MAX_FILMSTRIP = 6;
+const VIEW_STORAGE_KEY = "spotlight:viewMode";
+type ViewMode = "focus" | "board";
 
 export default function ProjectSpotlight() {
   const router = useRouter();
@@ -45,6 +47,7 @@ export default function ProjectSpotlight() {
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
   const [focusId, setFocusId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("focus");
   const newProjectWrapperRef = useRef<HTMLDivElement>(null);
   const emptyStateWrapperRef = useRef<HTMLDivElement>(null);
 
@@ -103,16 +106,21 @@ export default function ProjectSpotlight() {
     };
   }, [currentUserId, supabase]);
 
-  // Filtered active & searched list
-  const visibleProjects = useMemo(() => {
+  // Projects passing the current search filter (includes completed)
+  const searchedProjects = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
+    if (term.length === 0) return projects;
     return projects.filter((p) => {
-      if (p.completed) return false;
-      if (term.length === 0) return true;
       const hay = `${p.name} ${p.description ?? ""}`.toLowerCase();
       return hay.includes(term);
     });
   }, [projects, searchTerm]);
+
+  // Active subset — drives focus + filmstrip
+  const visibleProjects = useMemo(
+    () => searchedProjects.filter((p) => !p.completed),
+    [searchedProjects],
+  );
 
   // Initialise focus from localStorage or first project
   useEffect(() => {
@@ -134,6 +142,19 @@ export default function ProjectSpotlight() {
     if (typeof window === "undefined") return;
     if (focusId) window.localStorage.setItem(FOCUS_STORAGE_KEY, focusId);
   }, [focusId]);
+
+  // Hydrate view mode from localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(VIEW_STORAGE_KEY);
+    if (stored === "board" || stored === "focus") setViewMode(stored);
+  }, []);
+
+  // Persist view mode
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(VIEW_STORAGE_KEY, viewMode);
+  }, [viewMode]);
 
   const focusProject = useMemo(
     () => visibleProjects.find((p) => p.id === focusId) ?? null,
@@ -210,8 +231,8 @@ export default function ProjectSpotlight() {
   }, [focusProject, profiles]);
 
   const stripProjects = useMemo(() => {
-    if (!focusId) return visibleProjects.slice(0, MAX_FILMSTRIP);
-    return visibleProjects.filter((p) => p.id !== focusId).slice(0, MAX_FILMSTRIP);
+    if (!focusId) return visibleProjects;
+    return visibleProjects.filter((p) => p.id !== focusId);
   }, [visibleProjects, focusId]);
 
   // Keyboard navigation
@@ -363,16 +384,31 @@ export default function ProjectSpotlight() {
         <div className="mb-[18px] flex items-center justify-between gap-4">
           <div className="flex items-center gap-[14px]">
             <div className="text-[12px] font-semibold uppercase tracking-[1.5px] text-white/55">
-              Focus mode
+              {viewMode === "focus" ? "Focus mode" : "Board view"}
             </div>
             <div className="flex gap-1 rounded-full bg-white/5 p-1 text-[12.5px]">
-              <span className="rounded-full bg-white/10 px-3 py-[5px] text-white">Focus</span>
-              <span className="cursor-not-allowed px-3 py-[5px] text-white/45" title="Coming soon">
+              <button
+                type="button"
+                onClick={() => setViewMode("focus")}
+                className={`rounded-full px-3 py-[5px] transition-colors ${
+                  viewMode === "focus"
+                    ? "bg-white/10 text-white"
+                    : "text-white/55 hover:text-white"
+                }`}
+              >
+                Focus
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("board")}
+                className={`rounded-full px-3 py-[5px] transition-colors ${
+                  viewMode === "board"
+                    ? "bg-white/10 text-white"
+                    : "text-white/55 hover:text-white"
+                }`}
+              >
                 Board
-              </span>
-              <span className="cursor-not-allowed px-3 py-[5px] text-white/45" title="Coming soon">
-                Timeline
-              </span>
+              </button>
             </div>
           </div>
           <div className="flex items-center gap-[10px]">
@@ -395,7 +431,23 @@ export default function ProjectSpotlight() {
         </div>
 
         {/* Content */}
-        {focusProject ? (
+        {viewMode === "board" && searchedProjects.length > 0 ? (
+          <BoardView
+            projects={searchedProjects}
+            progressOf={progressOf}
+            dueOf={earliestDueOf}
+            onSelect={(id) => {
+              const target = searchedProjects.find((p) => p.id === id);
+              if (!target) return;
+              if (target.completed) {
+                router.push(`/projects/${id}`);
+                return;
+              }
+              setFocusId(id);
+              setViewMode("focus");
+            }}
+          />
+        ) : focusProject ? (
           <>
             <div className="flex flex-1 items-center gap-10">
               <FocusHero

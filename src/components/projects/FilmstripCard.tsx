@@ -20,7 +20,7 @@ export default function FilmstripCard({ project, progress, dueDate, onClick, act
     <button
       type="button"
       onClick={onClick}
-      className={`group relative flex min-w-0 flex-1 flex-col rounded-xl border border-white/10 p-[14px] text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-white/25 ${
+      className={`group relative flex w-full min-w-0 flex-col rounded-xl border border-white/10 p-[14px] text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-white/25 ${
         active ? "ring-1 ring-[#a5e236]/60" : ""
       }`}
       style={{ background: "rgba(255,255,255,0.05)", backdropFilter: "blur(14px)" }}

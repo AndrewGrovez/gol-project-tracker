@@ -21,15 +21,19 @@ export default function Filmstrip({ projects, progressOf, dueOf, onSelect }: Pro
         </div>
         <div className="text-[12px] text-white/45">← → to navigate</div>
       </div>
-      <div className="flex gap-[10px] overflow-hidden">
+      <div
+        className="flex gap-[10px] overflow-x-auto pb-1 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar-track]:bg-transparent"
+        style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.15) transparent" }}
+      >
         {projects.map((p) => (
-          <FilmstripCard
-            key={p.id}
-            project={p}
-            progress={progressOf(p.id)}
-            dueDate={dueOf(p.id)}
-            onClick={() => onSelect(p.id)}
-          />
+          <div key={p.id} className="w-[200px] shrink-0">
+            <FilmstripCard
+              project={p}
+              progress={progressOf(p.id)}
+              dueDate={dueOf(p.id)}
+              onClick={() => onSelect(p.id)}
+            />
+          </div>
         ))}
       </div>
     </div>
