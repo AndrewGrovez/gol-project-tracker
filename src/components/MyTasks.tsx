@@ -21,9 +21,24 @@ import { Input } from "@/components/ui/input";
 
 type TaskSortColumn = "title" | "project" | "status" | "due_date";
 type TaskStatusFilter = "all" | "todo" | "in_progress" | "completed" | "blocked";
+type TaskProject = Pick<Project, "id" | "name" | "status">;
+type TaskWithProject = Task & { project: TaskProject | null };
+
+const UNASSIGNED_PROJECT_NAME = "No project";
+
+const getTaskProjectName = (task: TaskWithProject) =>
+  task.project?.name ?? UNASSIGNED_PROJECT_NAME;
+
+const toKanbanTask = (task: TaskWithProject) => ({
+  id: task.id,
+  title: task.title,
+  description: task.description || "",
+  assignee: getTaskProjectName(task),
+  dueDate: task.due_date ? new Date(task.due_date).toLocaleDateString() : undefined,
+});
 
 export default function MyTasks() {
-  const [tasks, setTasks] = useState<(Task & { project: Project })[]>([]);
+  const [tasks, setTasks] = useState<TaskWithProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [todoOpen, setTodoOpen] = useState(true);
@@ -165,29 +180,11 @@ export default function MyTasks() {
   }, [tasks, searchTerm, statusFilter, projectFilter]);
 
   const kanbanData = useMemo(() => {
-    const todoTasks = filteredTasks.filter(task => task.status === 'todo').map(task => ({
-      id: task.id,
-      title: task.title,
-      description: task.description || '',
-      assignee: task.project.name,
-      dueDate: task.due_date ? new Date(task.due_date).toLocaleDateString() : undefined
-    }));
+    const todoTasks = filteredTasks.filter(task => task.status === 'todo').map(toKanbanTask);
 
-    const inProgressTasks = filteredTasks.filter(task => task.status === 'in_progress').map(task => ({
-      id: task.id,
-      title: task.title,
-      description: task.description || '',
-      assignee: task.project.name,
-      dueDate: task.due_date ? new Date(task.due_date).toLocaleDateString() : undefined
-    }));
+    const inProgressTasks = filteredTasks.filter(task => task.status === 'in_progress').map(toKanbanTask);
 
-    const completedTasks = filteredTasks.filter(task => task.status === 'completed').map(task => ({
-      id: task.id,
-      title: task.title,
-      description: task.description || '',
-      assignee: task.project.name,
-      dueDate: task.due_date ? new Date(task.due_date).toLocaleDateString() : undefined
-    }));
+    const completedTasks = filteredTasks.filter(task => task.status === 'completed').map(toKanbanTask);
 
     return [
       {
@@ -216,7 +213,7 @@ export default function MyTasks() {
       if (column === "title") {
         return a.title.localeCompare(b.title);
       } else if (column === "project") {
-        return a.project.name.localeCompare(b.project.name);
+        return getTaskProjectName(a).localeCompare(getTaskProjectName(b));
       } else if (column === "status") {
         const order: Record<Task["status"], number> = {
           todo: 1,
@@ -523,7 +520,7 @@ export default function MyTasks() {
                                   {task.title}
                                 </td>
                                 <td className="px-6 py-3 whitespace-normal break-words text-sm text-slate-600">
-                                  {task.project.name}
+                                  {getTaskProjectName(task)}
                                 </td>
                                 <td className="px-6 py-3 whitespace-nowrap text-sm">
                                   <div className="flex items-center gap-2">
@@ -635,7 +632,7 @@ export default function MyTasks() {
                                   {task.title}
                                 </td>
                                 <td className="px-6 py-3 whitespace-normal break-words text-sm text-slate-600">
-                                  {task.project.name}
+                                  {getTaskProjectName(task)}
                                 </td>
                                 <td className="px-6 py-3 whitespace-nowrap text-sm">
                                   <div className="flex items-center gap-2">

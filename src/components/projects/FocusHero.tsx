@@ -50,21 +50,21 @@ export default function FocusHero({
   ];
 
   return (
-    <div className="max-w-[640px] flex-1">
+    <div className="min-w-0 flex-1">
       <h1
-        className="m-0 font-black text-white"
-        style={{ fontSize: 60, letterSpacing: -2, lineHeight: 0.98 }}
+        className="m-0 font-black text-white text-[clamp(44px,4.6vw,68px)]"
+        style={{ letterSpacing: -2, lineHeight: 0.98 }}
       >
         {project.name}
       </h1>
 
       {project.description && (
-        <p className="mt-[18px] max-w-[520px] text-[17px] leading-[1.5] text-white/75">
+        <p className="mt-[18px] max-w-[640px] text-[17px] leading-[1.5] text-white/75">
           {project.description}
         </p>
       )}
 
-      <div className="mt-[28px] grid max-w-[420px] grid-cols-3 gap-[18px]">
+      <div className="mt-[28px] grid max-w-[480px] grid-cols-3 gap-[18px]">
         {stats.map((s) => (
           <div key={s.k}>
             <div className="text-[10px] font-bold uppercase tracking-[1.8px] text-white/45">
@@ -98,13 +98,6 @@ export default function FocusHero({
         >
           Open project
           <ArrowRight className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => router.push(`/tasks?project=${project.id}`)}
-          className="rounded-[10px] border border-white/15 bg-white/10 px-[22px] py-[12px] text-[14px] font-semibold text-white transition-colors hover:bg-white/20"
-        >
-          View tasks
         </button>
         <div ref={menuRef} className="relative">
           <button

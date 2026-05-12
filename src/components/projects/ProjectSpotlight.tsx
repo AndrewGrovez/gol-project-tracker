@@ -379,7 +379,7 @@ export default function ProjectSpotlight() {
     >
       <SpotlightBackground imageUrl={focusMeta?.image ?? null} />
 
-      <div className="relative z-10 flex min-h-screen flex-col px-10 pt-[26px] pb-[30px]">
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1400px] flex-col px-10 pt-[26px] pb-[30px]">
         {/* Top bar */}
         <div className="mb-[18px] flex items-center justify-between gap-4">
           <div className="flex items-center gap-[14px]">
