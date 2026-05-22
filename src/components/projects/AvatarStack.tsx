@@ -31,7 +31,6 @@ export default function AvatarStack({ names, size = 24, max = 4 }: Props) {
             background: PALETTE[i % PALETTE.length],
             fontSize: size * 0.42,
             fontWeight: 600,
-            letterSpacing: -0.2,
             boxShadow: "0 0 0 2px #13202e",
             marginLeft: i === 0 ? 0 : -8,
           }}

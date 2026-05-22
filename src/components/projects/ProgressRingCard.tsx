@@ -19,10 +19,10 @@ export default function ProgressRingCard({ progress, color, team, owner, updated
 
   return (
     <div
-      className="flex items-center gap-[18px] rounded-2xl border border-white/10 p-[22px] backdrop-blur-xl"
+      className="flex min-w-0 flex-col gap-[18px] rounded-2xl border border-white/10 p-[22px] backdrop-blur-xl sm:flex-row sm:items-center xl:flex-col xl:items-stretch"
       style={{ background: "rgba(255,255,255,0.06)" }}
     >
-      <svg width={160} height={160} viewBox="0 0 160 160">
+      <svg className="h-[140px] w-[140px] shrink-0 self-center xl:h-[160px] xl:w-[160px]" width={160} height={160} viewBox="0 0 160 160">
         <circle cx={80} cy={80} r={radius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={10} />
         <circle
           cx={80}

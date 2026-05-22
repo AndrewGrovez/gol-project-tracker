@@ -14,7 +14,7 @@ export default function Filmstrip({ projects, progressOf, dueOf, onSelect }: Pro
   if (projects.length === 0) return null;
 
   return (
-    <div className="mt-auto">
+    <div className="mt-auto min-w-0">
       <div className="mb-[10px] flex items-center justify-between">
         <div className="text-[11px] font-bold uppercase tracking-[1.5px] text-white/55">
           Up next · {projects.length} {projects.length === 1 ? "project" : "projects"}

@@ -52,8 +52,7 @@ export default function FocusHero({
   return (
     <div className="min-w-0 flex-1">
       <h1
-        className="m-0 font-black text-white text-[clamp(44px,4.6vw,68px)]"
-        style={{ letterSpacing: -2, lineHeight: 0.98 }}
+        className="m-0 max-w-full break-words text-[42px] font-black leading-[0.98] text-white sm:text-[52px] 2xl:text-[64px]"
       >
         {project.name}
       </h1>
@@ -74,7 +73,6 @@ export default function FocusHero({
               className="mt-1 font-extrabold"
               style={{
                 fontSize: 34,
-                letterSpacing: -1,
                 color: s.c ?? "white",
                 fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
               }}

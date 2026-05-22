@@ -374,15 +374,15 @@ export default function ProjectSpotlight() {
 
   return (
     <div
-      className="relative flex min-h-screen w-full flex-col text-white"
+      className="relative flex min-h-screen w-full min-w-0 overflow-x-hidden flex-col text-white"
       style={{ background: BRAND.navyDeep, fontFamily: "Inter, system-ui, sans-serif" }}
     >
       <SpotlightBackground imageUrl={focusMeta?.image ?? null} />
 
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1400px] flex-col px-10 pt-[26px] pb-[30px]">
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1400px] min-w-0 flex-col px-4 pt-[26px] pb-[30px] sm:px-6 lg:px-10">
         {/* Top bar */}
-        <div className="mb-[18px] flex items-center justify-between gap-4">
-          <div className="flex items-center gap-[14px]">
+        <div className="mb-[18px] flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
+          <div className="flex flex-wrap items-center gap-[14px]">
             <div className="text-[12px] font-semibold uppercase tracking-[1.5px] text-white/55">
               {viewMode === "focus" ? "Focus mode" : "Board view"}
             </div>
@@ -411,14 +411,14 @@ export default function ProjectSpotlight() {
               </button>
             </div>
           </div>
-          <div className="flex items-center gap-[10px]">
-            <div className="relative">
+          <div className="flex w-full flex-col gap-[10px] sm:flex-row sm:items-center md:w-auto">
+            <div className="relative w-full sm:w-auto">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
               <input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search projects"
-                className="h-9 w-[220px] rounded-lg border border-white/15 bg-white/5 pl-9 pr-3 text-sm text-white placeholder:text-white/40 focus:border-[#81bb26]/50 focus:outline-none"
+                className="h-9 w-full rounded-lg border border-white/15 bg-white/5 pl-9 pr-3 text-sm text-white placeholder:text-white/40 focus:border-[#81bb26]/50 focus:outline-none sm:w-[220px]"
               />
             </div>
             <div
@@ -449,7 +449,7 @@ export default function ProjectSpotlight() {
           />
         ) : focusProject ? (
           <>
-            <div className="flex flex-1 items-center gap-10">
+            <div className="flex flex-1 min-w-0 flex-col justify-center gap-6 xl:flex-row xl:items-center xl:gap-10">
               <FocusHero
                 project={focusProject}
                 progress={focusProgress}
@@ -459,7 +459,7 @@ export default function ProjectSpotlight() {
                 onDelete={deleteFocusProject}
                 onProjectUpdated={handleProjectUpdated}
               />
-              <div className="flex w-[340px] flex-col gap-[18px]">
+              <div className="flex w-full min-w-0 flex-col gap-[18px] xl:w-[340px] xl:shrink-0">
                 {focusMeta && (
                   <ProgressRingCard
                     progress={focusProgress}
