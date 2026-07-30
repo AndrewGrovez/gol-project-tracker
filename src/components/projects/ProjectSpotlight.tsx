@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import type { Project } from "@/types/database.types";
@@ -8,13 +8,8 @@ import { createClient } from "@/utils/supabase/client";
 import NewProjectDialog from "@/components/NewProjectDialog";
 
 import SpotlightBackground from "./SpotlightBackground";
-import FocusHero from "./FocusHero";
-import ProgressRingCard from "./ProgressRingCard";
-import TodayFocusList, { type FocusTask } from "./TodayFocusList";
-import Filmstrip from "./Filmstrip";
 import BoardView from "./BoardView";
-import { useSpotlightKeyboard } from "./useSpotlightKeyboard";
-import { BRAND, deriveProjectMeta } from "./spotlight-config";
+import { BRAND } from "./spotlight-config";
 
 type ExtendedProject = Project & { allowed_users?: string[] | null };
 
@@ -26,30 +21,17 @@ type TaskRow = {
   due_date: string | null;
 };
 
-type Profile = { id: string; display_name: string };
-
-const FOCUS_STORAGE_KEY = "spotlight:focusId";
-const VIEW_STORAGE_KEY = "spotlight:viewMode";
-type ViewMode = "focus" | "board";
-
 export default function ProjectSpotlight() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
   const [projects, setProjects] = useState<ExtendedProject[]>([]);
   const [tasks, setTasks] = useState<TaskRow[]>([]);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [focusTasks, setFocusTasks] = useState<FocusTask[]>([]);
-  const [focusTasksLoading, setFocusTasksLoading] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [focusId, setFocusId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("focus");
-  const newProjectWrapperRef = useRef<HTMLDivElement>(null);
-  const emptyStateWrapperRef = useRef<HTMLDivElement>(null);
 
   // Auth
   useEffect(() => {
@@ -64,7 +46,7 @@ export default function ProjectSpotlight() {
     run();
   }, [router, supabase]);
 
-  // Load projects and profiles + tasks once we have a user
+  // Load projects + tasks once we have a user
   useEffect(() => {
     if (!currentUserId) return;
     let cancelled = false;
@@ -74,23 +56,20 @@ export default function ProjectSpotlight() {
         setLoading(true);
         setError(null);
 
-        const [projectsRes, profilesRes, tasksRes] = await Promise.all([
+        const [projectsRes, tasksRes] = await Promise.all([
           supabase
             .from("projects")
             .select("*")
             .contains("allowed_users", [currentUserId])
             .order("updated_at", { ascending: false }),
-          supabase.from("profiles").select("id, display_name"),
           supabase.from("tasks").select("id, project_id, title, status, due_date"),
         ]);
 
         if (cancelled) return;
         if (projectsRes.error) throw projectsRes.error;
-        if (profilesRes.error) throw profilesRes.error;
         if (tasksRes.error) throw tasksRes.error;
 
         setProjects((projectsRes.data ?? []) as ExtendedProject[]);
-        setProfiles((profilesRes.data ?? []) as Profile[]);
         setTasks((tasksRes.data ?? []) as TaskRow[]);
       } catch (err) {
         console.error("Spotlight load failed:", err);
@@ -116,51 +95,6 @@ export default function ProjectSpotlight() {
     });
   }, [projects, searchTerm]);
 
-  // Active subset — drives focus + filmstrip
-  const visibleProjects = useMemo(
-    () => searchedProjects.filter((p) => !p.completed),
-    [searchedProjects],
-  );
-
-  // Initialise focus from localStorage or first project
-  useEffect(() => {
-    if (visibleProjects.length === 0) {
-      setFocusId(null);
-      return;
-    }
-    setFocusId((current) => {
-      if (current && visibleProjects.some((p) => p.id === current)) return current;
-      const stored =
-        typeof window !== "undefined" ? window.localStorage.getItem(FOCUS_STORAGE_KEY) : null;
-      if (stored && visibleProjects.some((p) => p.id === stored)) return stored;
-      return visibleProjects[0].id;
-    });
-  }, [visibleProjects]);
-
-  // Persist focus
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (focusId) window.localStorage.setItem(FOCUS_STORAGE_KEY, focusId);
-  }, [focusId]);
-
-  // Hydrate view mode from localStorage
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem(VIEW_STORAGE_KEY);
-    if (stored === "board" || stored === "focus") setViewMode(stored);
-  }, []);
-
-  // Persist view mode
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(VIEW_STORAGE_KEY, viewMode);
-  }, [viewMode]);
-
-  const focusProject = useMemo(
-    () => visibleProjects.find((p) => p.id === focusId) ?? null,
-    [visibleProjects, focusId],
-  );
-
   // Progress per project from tasks (completed / total)
   const progressOf = useCallback(
     (projectId: string) => {
@@ -183,92 +117,9 @@ export default function ProjectSpotlight() {
     [tasks],
   );
 
-  // Load today's focus tasks for the focused project
-  useEffect(() => {
-    if (!focusProject) {
-      setFocusTasks([]);
-      return;
-    }
-    let cancelled = false;
-    const run = async () => {
-      try {
-        setFocusTasksLoading(true);
-        const { data, error: err } = await supabase
-          .from("tasks")
-          .select("id, title, status, due_date")
-          .eq("project_id", focusProject.id)
-          .neq("status", "completed")
-          .order("due_date", { ascending: true, nullsFirst: false })
-          .limit(3);
-        if (err) throw err;
-        if (cancelled) return;
-        setFocusTasks(((data ?? []) as FocusTask[]));
-      } catch (err) {
-        console.error("Focus tasks load failed:", err);
-      } finally {
-        if (!cancelled) setFocusTasksLoading(false);
-      }
-    };
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [focusProject, supabase]);
-
-  const teamForProject = useCallback(
-    (project: ExtendedProject | null): string[] => {
-      if (!project?.allowed_users) return [];
-      return project.allowed_users
-        .map((id) => profiles.find((p) => p.id === id)?.display_name ?? null)
-        .filter((n): n is string => Boolean(n));
-    },
-    [profiles],
-  );
-
-  const ownerName = useMemo(() => {
-    if (!focusProject?.owner_id) return null;
-    return profiles.find((p) => p.id === focusProject.owner_id)?.display_name ?? null;
-  }, [focusProject, profiles]);
-
-  const stripProjects = useMemo(() => {
-    if (!focusId) return visibleProjects;
-    return visibleProjects.filter((p) => p.id !== focusId);
-  }, [visibleProjects, focusId]);
-
-  // Keyboard navigation
-  const cycle = useCallback(
-    (direction: 1 | -1) => {
-      if (visibleProjects.length < 2) return;
-      setFocusId((current) => {
-        const idx = Math.max(
-          0,
-          visibleProjects.findIndex((p) => p.id === current),
-        );
-        const next =
-          (idx + direction + visibleProjects.length) % visibleProjects.length;
-        return visibleProjects[next].id;
-      });
-    },
-    [visibleProjects],
-  );
-
-  useSpotlightKeyboard({
-    onNext: () => cycle(1),
-    onPrev: () => cycle(-1),
-    onOpen: () => {
-      if (focusProject) router.push(`/projects/${focusProject.id}`);
-    },
-    onNew: () => {
-      const wrapper = newProjectWrapperRef.current ?? emptyStateWrapperRef.current;
-      wrapper?.querySelector("button")?.click();
-    },
-    enabled: !loading,
-  });
-
   // Actions
   const handleProjectCreated = useCallback((project: Project) => {
     setProjects((prev) => [project as ExtendedProject, ...prev]);
-    setFocusId(project.id);
   }, []);
 
   const handleProjectUpdated = useCallback((updated: Project) => {
@@ -277,60 +128,37 @@ export default function ProjectSpotlight() {
     );
   }, []);
 
-  const toggleProjectCompletion = useCallback(async () => {
-    if (!focusProject) return;
-    const nextCompleted = !focusProject.completed;
-    const prev = projects;
-    setProjects((cur) =>
-      cur.map((p) => (p.id === focusProject.id ? { ...p, completed: nextCompleted } : p)),
-    );
-    const { error: err } = await supabase
-      .from("projects")
-      .update({ completed: nextCompleted })
-      .eq("id", focusProject.id);
-    if (err) {
-      console.error("Toggle completion failed:", err);
-      setProjects(prev);
-    }
-  }, [focusProject, projects, supabase]);
-
-  const deleteFocusProject = useCallback(async () => {
-    if (!focusProject) return;
-    if (!confirm(`Delete "${focusProject.name}"? This cannot be undone.`)) return;
-    const prev = projects;
-    setProjects((cur) => cur.filter((p) => p.id !== focusProject.id));
-    const { error: err } = await supabase
-      .from("projects")
-      .delete()
-      .eq("id", focusProject.id);
-    if (err) {
-      console.error("Delete project failed:", err);
-      setProjects(prev);
-    }
-  }, [focusProject, projects, supabase]);
-
-  const toggleFocusTask = useCallback(
-    async (taskId: string) => {
-      const task = focusTasks.find((t) => t.id === taskId);
-      if (!task) return;
-      const nextStatus = task.status === "completed" ? "todo" : "completed";
-      const prevTasks = focusTasks;
-      const prevAll = tasks;
-      setFocusTasks((cur) =>
-        cur.map((t) => (t.id === taskId ? { ...t, status: nextStatus } : t)),
+  const toggleProjectCompletion = useCallback(
+    async (project: Project) => {
+      const nextCompleted = !project.completed;
+      const prev = projects;
+      setProjects((cur) =>
+        cur.map((p) => (p.id === project.id ? { ...p, completed: nextCompleted } : p)),
       );
-      setTasks((cur) => cur.map((t) => (t.id === taskId ? { ...t, status: nextStatus } : t)));
       const { error: err } = await supabase
-        .from("tasks")
-        .update({ status: nextStatus })
-        .eq("id", taskId);
+        .from("projects")
+        .update({ completed: nextCompleted })
+        .eq("id", project.id);
       if (err) {
-        console.error("Toggle task failed:", err);
-        setFocusTasks(prevTasks);
-        setTasks(prevAll);
+        console.error("Toggle completion failed:", err);
+        setProjects(prev);
       }
     },
-    [focusTasks, tasks, supabase],
+    [projects, supabase],
+  );
+
+  const deleteProject = useCallback(
+    async (project: Project) => {
+      if (!confirm(`Delete "${project.name}"? This cannot be undone.`)) return;
+      const prev = projects;
+      setProjects((cur) => cur.filter((p) => p.id !== project.id));
+      const { error: err } = await supabase.from("projects").delete().eq("id", project.id);
+      if (err) {
+        console.error("Delete project failed:", err);
+        setProjects(prev);
+      }
+    },
+    [projects, supabase],
   );
 
   // Rendering
@@ -367,50 +195,16 @@ export default function ProjectSpotlight() {
     );
   }
 
-  const focusMeta = focusProject ? deriveProjectMeta(focusProject) : null;
-  const focusProgress = focusProject ? progressOf(focusProject.id) : 0;
-  const focusDue = focusProject ? earliestDueOf(focusProject.id) : null;
-  const focusTeams = teamForProject(focusProject);
-
   return (
     <div
       className="relative flex min-h-screen w-full min-w-0 overflow-x-hidden flex-col text-white"
       style={{ background: BRAND.navyDeep, fontFamily: "Inter, system-ui, sans-serif" }}
     >
-      <SpotlightBackground imageUrl={focusMeta?.image ?? null} />
+      <SpotlightBackground imageUrl={null} />
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1400px] min-w-0 flex-col px-4 pt-[26px] pb-[30px] sm:px-6 lg:px-10">
         {/* Top bar */}
-        <div className="mb-[18px] flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
-          <div className="flex flex-wrap items-center gap-[14px]">
-            <div className="text-[12px] font-semibold uppercase tracking-[1.5px] text-white/55">
-              {viewMode === "focus" ? "Focus mode" : "Board view"}
-            </div>
-            <div className="flex gap-1 rounded-full bg-white/5 p-1 text-[12.5px]">
-              <button
-                type="button"
-                onClick={() => setViewMode("focus")}
-                className={`rounded-full px-3 py-[5px] transition-colors ${
-                  viewMode === "focus"
-                    ? "bg-white/10 text-white"
-                    : "text-white/55 hover:text-white"
-                }`}
-              >
-                Focus
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("board")}
-                className={`rounded-full px-3 py-[5px] transition-colors ${
-                  viewMode === "board"
-                    ? "bg-white/10 text-white"
-                    : "text-white/55 hover:text-white"
-                }`}
-              >
-                Board
-              </button>
-            </div>
-          </div>
+        <div className="mb-[18px] flex flex-col gap-3 md:flex-row md:items-center md:justify-end md:gap-4">
           <div className="flex w-full flex-col gap-[10px] sm:flex-row sm:items-center md:w-auto">
             <div className="relative w-full sm:w-auto">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
@@ -421,87 +215,38 @@ export default function ProjectSpotlight() {
                 className="h-9 w-full rounded-lg border border-white/15 bg-white/5 pl-9 pr-3 text-sm text-white placeholder:text-white/40 focus:border-[#81bb26]/50 focus:outline-none sm:w-[220px]"
               />
             </div>
-            <div
-              ref={newProjectWrapperRef}
-              className="[&_button]:!rounded-[10px] [&_button]:!bg-[#81bb26] [&_button]:!px-[18px] [&_button]:!py-[10px] [&_button]:!text-sm [&_button]:!font-bold [&_button]:!text-[#1c3145] [&_button]:!shadow-[0_4px_14px_rgba(129,187,38,0.35)] [&_button]:hover:!bg-[#74a822] [&_button]:hover:-translate-y-0.5 [&_button]:transition-transform"
-            >
+            <div className="[&_button]:!rounded-[10px] [&_button]:!bg-[#81bb26] [&_button]:!px-[18px] [&_button]:!py-[10px] [&_button]:!text-sm [&_button]:!font-bold [&_button]:!text-[#1c3145] [&_button]:!shadow-[0_4px_14px_rgba(129,187,38,0.35)] [&_button]:hover:!bg-[#74a822] [&_button]:hover:-translate-y-0.5 [&_button]:transition-transform">
               <NewProjectDialog onProjectCreated={handleProjectCreated} />
             </div>
           </div>
         </div>
 
         {/* Content */}
-        {viewMode === "board" && searchedProjects.length > 0 ? (
-          <BoardView
-            projects={searchedProjects}
-            progressOf={progressOf}
-            dueOf={earliestDueOf}
-            onSelect={(id) => {
-              const target = searchedProjects.find((p) => p.id === id);
-              if (!target) return;
-              if (target.completed) {
-                router.push(`/projects/${id}`);
-                return;
-              }
-              setFocusId(id);
-              setViewMode("focus");
-            }}
-          />
-        ) : focusProject ? (
-          <>
-            <div className="flex flex-1 min-w-0 flex-col justify-center gap-6 xl:flex-row xl:items-center xl:gap-10">
-              <FocusHero
-                project={focusProject}
-                progress={focusProgress}
-                teamsCount={focusTeams.length}
-                dueDate={focusDue}
-                onToggleComplete={toggleProjectCompletion}
-                onDelete={deleteFocusProject}
-                onProjectUpdated={handleProjectUpdated}
-              />
-              <div className="flex w-full min-w-0 flex-col gap-[18px] xl:w-[340px] xl:shrink-0">
-                {focusMeta && (
-                  <ProgressRingCard
-                    progress={focusProgress}
-                    color={focusMeta.color}
-                    team={focusTeams}
-                    owner={ownerName}
-                    updatedAt={focusProject.updated_at}
-                  />
-                )}
-                <TodayFocusList
-                  tasks={focusTasks}
-                  loading={focusTasksLoading}
-                  onToggle={toggleFocusTask}
-                />
-              </div>
-            </div>
-
-            <Filmstrip
-              projects={stripProjects}
-              progressOf={progressOf}
-              dueOf={earliestDueOf}
-              onSelect={(id) => setFocusId(id)}
-            />
-          </>
-        ) : (
+        {projects.length === 0 ? (
           <div className="flex flex-1 items-center justify-center">
             <div
               className="flex max-w-xl flex-col items-center rounded-2xl border border-white/10 p-10 text-center backdrop-blur-xl"
               style={{ background: "rgba(255,255,255,0.05)" }}
             >
-              <h2 className="text-3xl font-extrabold text-white">No active projects yet</h2>
+              <h2 className="text-3xl font-extrabold text-white">No projects yet</h2>
               <p className="mt-3 text-white/70">
-                Start by creating your first project — the spotlight will light up once it&apos;s here.
+                Start by creating your first project — it&apos;ll show up on the board.
               </p>
-              <div
-                ref={emptyStateWrapperRef}
-                className="mt-6 [&_button]:!rounded-xl [&_button]:!bg-[#81bb26] [&_button]:!px-6 [&_button]:!py-3 [&_button]:!text-base [&_button]:!font-bold [&_button]:!text-[#1c3145] [&_button]:!shadow-[0_10px_28px_rgba(129,187,38,0.4)] [&_button]:hover:!bg-[#74a822] [&_button]:hover:-translate-y-0.5 [&_button]:transition-transform"
-              >
+              <div className="mt-6 [&_button]:!rounded-xl [&_button]:!bg-[#81bb26] [&_button]:!px-6 [&_button]:!py-3 [&_button]:!text-base [&_button]:!font-bold [&_button]:!text-[#1c3145] [&_button]:!shadow-[0_10px_28px_rgba(129,187,38,0.4)] [&_button]:hover:!bg-[#74a822] [&_button]:hover:-translate-y-0.5 [&_button]:transition-transform">
                 <NewProjectDialog onProjectCreated={handleProjectCreated} />
               </div>
             </div>
           </div>
+        ) : (
+          <BoardView
+            projects={searchedProjects}
+            progressOf={progressOf}
+            dueOf={earliestDueOf}
+            onSelect={(id) => router.push(`/projects/${id}`)}
+            onToggleComplete={toggleProjectCompletion}
+            onDelete={deleteProject}
+            onProjectUpdated={handleProjectUpdated}
+          />
         )}
       </div>
     </div>

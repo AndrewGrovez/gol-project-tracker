@@ -110,29 +110,15 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   };
 
 
-  const getColumnStyle = (columnId: string) => {
+  // Columns share one quiet surface; only the accent dot distinguishes them.
+  const getColumnAccent = (columnId: string) => {
     switch (columnId) {
-      case 'todo':
-        return 'bg-slate-50 border-slate-200';
       case 'inprogress':
-        return 'bg-blue-50 border-blue-200';
+        return '#81bb26';
       case 'completed':
-        return 'bg-green-50 border-green-200';
+        return '#94a3b8';
       default:
-        return 'bg-gray-50 border-gray-200';
-    }
-  };
-
-  const getColumnHeaderStyle = (columnId: string) => {
-    switch (columnId) {
-      case 'todo':
-        return 'text-slate-700 border-b-slate-200';
-      case 'inprogress':
-        return 'text-blue-700 border-b-blue-200';
-      case 'completed':
-        return 'text-green-700 border-b-green-200';
-      default:
-        return 'text-gray-700 border-b-gray-200';
+        return '#cbd5e1';
     }
   };
 
@@ -149,70 +135,57 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   };
 
   return (
-    <div className="w-full h-full p-6" style={{ backgroundColor: '#f8fafc' }}>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full">
+    <div className="w-full h-full">
+      <div className="grid h-full grid-cols-1 gap-3 md:grid-cols-3">
         {columns.map((column) => (
           <div
             key={column.id}
-            className={`flex flex-col h-full min-h-[600px] rounded-lg border-2 ${getColumnStyle(column.id)}`}
+            className="flex h-full min-h-[520px] flex-col rounded-xl border border-slate-200/70 bg-slate-50/60"
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, column.id)}
           >
-            <div 
-              className={`p-4 border-b-2 ${getColumnHeaderStyle(column.id)}`}
-              style={{ backgroundColor: '#1c3145' }}
-            >
-              <h3 className="font-semibold text-lg text-white">
+            <div className="flex items-center gap-2 border-b border-slate-200/70 px-4 py-3">
+              <span
+                aria-hidden
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: getColumnAccent(column.id) }}
+              />
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                 {column.title}
               </h3>
-              <div className="mt-1">
-                <span 
-                  className="inline-block px-2 py-1 text-xs font-medium rounded-full text-white"
-                  style={{ backgroundColor: '#81bb26' }}
-                >
-                  {column.tasks.length} tasks
-                </span>
-              </div>
+              <span className="ml-auto text-xs font-semibold tabular-nums text-slate-400">
+                {column.tasks.length}
+              </span>
             </div>
             
-            <div className="flex-1 p-4 space-y-3 overflow-y-auto">
+            <div className="flex-1 space-y-2 overflow-y-auto p-3">
               {getVisibleTasks(column).map((task) => (
                 <div key={task.id} className="relative group">
                   <Card
-                    className="cursor-move hover:shadow-md transition-shadow duration-200 border-2"
+                    className="cursor-grab rounded-lg border border-slate-200/80 bg-white shadow-none transition-all duration-200 hover:-translate-y-px hover:border-slate-300 hover:shadow-[0_4px_12px_-4px_rgba(15,23,42,0.15)] active:cursor-grabbing"
                     draggable
                     onDragStart={(e) => handleDragStart(e, task, column.id)}
-                    style={{ borderColor: '#e2e8f0' }}
                   >
                     <CardContent className="p-3">
                       <div className="space-y-2">
-                        <h4 
-                          className="font-medium text-sm leading-tight"
-                          style={{ color: '#1c3145' }}
-                        >
+                        <h4 className="pr-6 text-sm font-medium leading-snug text-[#1c3145]">
                           {task.title}
                         </h4>
                         
                         {task.description && (
-                          <p className="text-xs text-gray-600 leading-relaxed">
+                          <p className="line-clamp-2 text-xs leading-relaxed text-slate-500">
                             {task.description}
                           </p>
                         )}
                         
-                        <div className="flex items-center justify-between pt-2">
-                          {task.assignee && (
-                            <span 
-                              className="text-xs font-medium px-2 py-1 rounded-full"
-                              style={{ backgroundColor: '#81bb26', color: 'white' }}
-                            >
-                              {task.assignee}
-                            </span>
-                          )}
-                        </div>
-                        
-                        {task.dueDate && (
-                          <div className="text-xs text-gray-500 pt-1">
-                            Due: {task.dueDate}
+                        {(task.assignee || task.dueDate) && (
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5 text-xs text-slate-400">
+                            {task.assignee && (
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600">
+                                {task.assignee}
+                              </span>
+                            )}
+                            {task.dueDate && <span className="tabular-nums">{task.dueDate}</span>}
                           </div>
                         )}
                       </div>
@@ -235,8 +208,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 <div className="text-center mt-4">
                   <button
                     onClick={() => handleSeeMore(column.id)}
-                    className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
-                    style={{ backgroundColor: '#81bb26' }}
+                    className="w-full rounded-lg border border-slate-200/80 bg-white px-4 py-2 text-xs font-medium text-slate-500 transition-colors hover:border-slate-300 hover:text-[#1c3145]"
                   >
                     See more ({column.tasks.length - (visibleTasksCount[column.id] || 10)} more)
                   </button>
@@ -244,9 +216,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
               )}
               
               {column.tasks.length === 0 && (
-                <div className="text-center py-8 text-gray-400">
-                  <p className="text-sm">No tasks yet</p>
-                  <p className="text-xs mt-1">Drag tasks here to get started</p>
+                <div className="rounded-lg border border-dashed border-slate-200 py-8 text-center text-slate-400">
+                  <p className="text-xs">Drag tasks here</p>
                 </div>
               )}
             </div>

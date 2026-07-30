@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { Project } from "@/types/database.types";
 import { deriveProjectMeta, formatDueDate, statusDotColor } from "./spotlight-config";
 
@@ -9,34 +10,46 @@ type Props = {
   dueDate: string | null;
   onClick: () => void;
   active?: boolean;
+  actions?: ReactNode;
 };
 
-export default function FilmstripCard({ project, progress, dueDate, onClick, active }: Props) {
+export default function FilmstripCard({
+  project,
+  progress,
+  dueDate,
+  onClick,
+  active,
+  actions,
+}: Props) {
   const meta = deriveProjectMeta(project);
   const displayStatus = project.completed ? "completed" : project.status;
   const dotColor = statusDotColor(displayStatus);
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className={`group relative flex w-full min-w-0 flex-col rounded-xl border border-white/10 p-[14px] text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-white/25 ${
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      className={`group relative flex w-full min-w-0 cursor-pointer flex-col rounded-xl border border-white/10 p-[14px] text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-white/25 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#a5e236]/60 ${
         active ? "ring-1 ring-[#a5e236]/60" : ""
       }`}
       style={{ background: "rgba(255,255,255,0.05)", backdropFilter: "blur(14px)" }}
     >
-      <div className="mb-2 flex items-center justify-between">
-        <span
-          className="text-[10px] font-bold tracking-[0.5px]"
-          style={{ color: meta.color, fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace' }}
-        >
-          {meta.code}
-        </span>
-        <span
-          aria-hidden
-          className="inline-block h-2 w-2 rounded-full"
-          style={{ background: dotColor }}
-        />
+      <div className="mb-2 flex items-center justify-end">
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden
+            className="inline-block h-2 w-2 rounded-full"
+            style={{ background: dotColor }}
+          />
+          {actions}
+        </div>
       </div>
       <div className="h-[36px] overflow-hidden text-[14px] font-bold leading-[1.25] text-white">
         {project.name}
@@ -51,6 +64,6 @@ export default function FilmstripCard({ project, progress, dueDate, onClick, act
         <span>{Math.round(progress)}%</span>
         <span>{formatDueDate(dueDate)}</span>
       </div>
-    </button>
+    </div>
   );
 }

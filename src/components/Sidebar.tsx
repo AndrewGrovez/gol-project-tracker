@@ -97,8 +97,8 @@ const Sidebar = () => {
   
   const renderLogo = () => (
     <div className={cn(
-      "fixed left-0 top-0 h-full bg-[#1c3145] text-white p-4 shadow-lg flex items-center justify-center",
-      isCollapsed ? "w-16" : "w-56"
+      "fixed left-0 top-0 z-50 h-full bg-[#1c3145] text-white p-4 shadow-lg flex items-center justify-center",
+      isCollapsed ? "w-16" : "w-48"
     )}>
       <Image
         src="/GolLogo.png"
@@ -126,8 +126,8 @@ const Sidebar = () => {
 
   return (
     <div className={cn(
-      "fixed left-0 top-0 h-full bg-[#1c3145] text-white p-2 shadow-lg flex flex-col transition-all duration-300",
-      isCollapsed ? "w-16" : "w-56"
+      "fixed left-0 top-0 z-50 h-full bg-[#1c3145] text-white p-2 shadow-lg flex flex-col transition-all duration-300",
+      isCollapsed ? "w-16" : "w-48"
     )}>
       <div className={cn(
         "py-2 mb-4 flex",
@@ -179,7 +179,7 @@ const Sidebar = () => {
             if (item.isHeader) {
               if (isCollapsed) return null;
               return (
-                <div key={`header-${index}`} className="px-4 py-2 mt-3 mb-1">
+                <div key={`header-${index}`} className="px-3 py-2 mt-3 mb-1">
                   <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">
                     {item.label}
                   </span>
@@ -198,7 +198,7 @@ const Sidebar = () => {
                     "w-full flex items-center rounded-lg transition-colors",
                     "hover:bg-[#81bb26]/20",
                     isActive ? "bg-[#81bb26]/30" : "transparent",
-                    isCollapsed ? "justify-center p-2" : "gap-2 px-4 py-2"
+                    isCollapsed ? "justify-center p-2" : "gap-2.5 px-3 py-2"
                   )}
                   title={isCollapsed ? item.label : undefined}
                 >
@@ -216,7 +216,7 @@ const Sidebar = () => {
         className={cn(
           "w-full flex items-center rounded-lg transition-colors mt-2",
           "transparent",
-          isCollapsed ? "justify-center p-2" : "gap-2 px-4 py-2"
+          isCollapsed ? "justify-center p-2" : "gap-2.5 px-3 py-2"
         )}
         title={isCollapsed ? "Sign Out" : undefined}
       >

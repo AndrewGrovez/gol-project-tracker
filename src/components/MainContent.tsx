@@ -13,7 +13,7 @@ const MainContent = ({ children }: MainContentProps) => {
   return (
     <main className={cn(
       "min-w-0 w-full transition-all duration-300",
-      isCollapsed ? "pl-16" : "pl-56"
+      isCollapsed ? "pl-16" : "pl-48"
     )}>
       {children}
     </main>

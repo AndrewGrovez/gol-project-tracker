@@ -36,6 +36,19 @@ type TaskSortColumn = "title" | "status" | "assigned_to" | "due_date";
 type KpiSortColumn = "title" | "measure_date";
 type ProjectDetailsTab = "tasks" | "kpis" | "comments" | "docs";
 
+// One surface + elevation scale for the whole page, so panels read as one system.
+const PANEL =
+  "rounded-2xl border border-slate-200/70 bg-white/85 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_10px_30px_-18px_rgba(15,23,42,0.35)] backdrop-blur-xl";
+const INSET = "rounded-xl border border-slate-200/70 bg-white/70";
+const SECTION_LABEL = "text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400";
+const TABLE_HEAD = "bg-slate-50/80 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500";
+const TABLE_HEAD_CELL =
+  "px-4 py-2.5 text-left cursor-pointer select-none transition-colors hover:text-[#1c3145]";
+const FIELD =
+  "min-w-[120px] rounded-lg border-slate-200 py-1.5 text-xs shadow-none focus:border-[#81bb26] focus:ring-1 focus:ring-[#81bb26]/40";
+const DELETE_BTN =
+  "border border-slate-200 text-slate-400 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600";
+
 /**
  * Helper function to format a date string.
  * - If the date is in the past: returns "dd/mm/yy" format
@@ -353,34 +366,41 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
     };
   }, [kpis]);
 
+  const totalTaskCount = taskStats.openCount + taskStats.completedCount;
+  const completionPct =
+    totalTaskCount === 0 ? 0 : Math.round((taskStats.completedCount / totalTaskCount) * 100);
+
+  // Icon tints stay muted; only blocked earns a warning colour, so it reads as the exception.
   const highlightCards = [
     {
       label: "Active tasks",
       value: taskStats.openCount,
       helper: taskStats.openCount ? "In motion" : "You're all caught up",
       icon: List,
-      iconClasses: "bg-[#81bb26]/15 text-[#09162a]",
+      iconClasses: "bg-slate-100 text-[#1c3145]",
     },
     {
       label: "Completed",
       value: taskStats.completedCount,
       helper: taskStats.completedCount ? "Marked done" : "Ready to make progress",
       icon: CheckCircle,
-      iconClasses: "bg-emerald-500/15 text-emerald-600",
+      iconClasses: "bg-[#81bb26]/15 text-[#5f8c1c]",
     },
     {
       label: "Blocked",
       value: taskStats.blockedCount,
       helper: taskStats.blockedCount ? "Needs attention" : "No blockers",
       icon: AlertTriangle,
-      iconClasses: "bg-amber-100 text-amber-600",
+      iconClasses: taskStats.blockedCount
+        ? "bg-amber-100 text-amber-600"
+        : "bg-slate-100 text-slate-400",
     },
     {
       label: "KPIs tracked",
       value: kpiStats.count,
       helper: kpiStats.count ? "Measuring progress" : "Add your first KPI",
       icon: Target,
-      iconClasses: "bg-[#09162a]/10 text-[#09162a]",
+      iconClasses: "bg-slate-100 text-[#1c3145]",
     },
   ];
 
@@ -426,19 +446,19 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
 
   if (loading) {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-emerald-50">
-        <div className="pointer-events-none absolute -top-40 -left-32 h-[36rem] w-[36rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(129,187,38,0.28)_0%,_rgba(148,163,184,0.08)_60%,_transparent_100%)] blur-3xl" />
-        <div className="pointer-events-none absolute bottom-[-14rem] right-[-20rem] h-[44rem] w-[44rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(56,189,248,0.22)_0%,_rgba(129,187,38,0.12)_55%,_transparent_100%)] blur-3xl" />
+      <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50">
+        <div className="pointer-events-none absolute -top-48 -left-40 h-[38rem] w-[38rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(129,187,38,0.14)_0%,_transparent_70%)] blur-3xl" />
+        <div className="pointer-events-none absolute bottom-[-18rem] right-[-22rem] h-[46rem] w-[46rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(28,49,69,0.10)_0%,_transparent_70%)] blur-3xl" />
         <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-12">
-          <div className="rounded-3xl border border-white/70 bg-white/80 p-8 shadow-xl backdrop-blur">
+          <div className={`${PANEL} p-8`}>
             <div className="animate-pulse space-y-6">
-              <div className="h-8 w-48 rounded-full bg-slate-200/70" />
-              <div className="h-16 rounded-2xl bg-slate-100/70" />
+              <div className="h-7 w-56 rounded-lg bg-slate-200/70" />
+              <div className="h-14 rounded-xl bg-slate-100/80" />
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="h-20 rounded-2xl bg-slate-100/70" />
-                <div className="h-20 rounded-2xl bg-slate-100/70" />
-                <div className="h-20 rounded-2xl bg-slate-100/70" />
-                <div className="h-20 rounded-2xl bg-slate-100/70" />
+                <div className="h-20 rounded-xl bg-slate-100/80" />
+                <div className="h-20 rounded-xl bg-slate-100/80" />
+                <div className="h-20 rounded-xl bg-slate-100/80" />
+                <div className="h-20 rounded-xl bg-slate-100/80" />
               </div>
             </div>
           </div>
@@ -449,11 +469,11 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
 
   if (error || !project) {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-emerald-50">
-        <div className="pointer-events-none absolute -top-40 -left-32 h-[36rem] w-[36rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(129,187,38,0.28)_0%,_rgba(148,163,184,0.08)_60%,_transparent_100%)] blur-3xl" />
-        <div className="pointer-events-none absolute bottom-[-14rem] right-[-20rem] h-[44rem] w-[44rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(56,189,248,0.22)_0%,_rgba(129,187,38,0.12)_55%,_transparent_100%)] blur-3xl" />
+      <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50">
+        <div className="pointer-events-none absolute -top-48 -left-40 h-[38rem] w-[38rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(129,187,38,0.14)_0%,_transparent_70%)] blur-3xl" />
+        <div className="pointer-events-none absolute bottom-[-18rem] right-[-22rem] h-[46rem] w-[46rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(28,49,69,0.10)_0%,_transparent_70%)] blur-3xl" />
         <div className="relative z-10 mx-auto w-full max-w-lg px-6 py-16">
-          <div className="rounded-3xl border border-rose-100 bg-white/85 p-8 text-center shadow-xl backdrop-blur">
+          <div className={`${PANEL} border-rose-200/70 p-8 text-center`}>
             <h2 className="text-xl font-semibold text-[#09162a]">Something went wrong</h2>
             <p className="mt-3 text-sm leading-relaxed text-rose-600">
               {error || "Project not found"}
@@ -465,37 +485,66 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
   }
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50">
-      <div className="pointer-events-none absolute -top-40 -left-32 h-[36rem] w-[36rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(129,187,38,0.28)_0%,_rgba(148,163,184,0.08)_60%,_transparent_100%)] blur-3xl" />
-      <div className="pointer-events-none absolute bottom-[-14rem] right-[-20rem] h-[44rem] w-[44rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(56,189,248,0.22)_0%,_rgba(129,187,38,0.12)_55%,_transparent_100%)] blur-3xl" />
-      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pt-3 pb-6">
-        <section className="flex flex-col gap-3">
-          <div className="rounded-3xl border border-white/60 bg-white/85 px-4 py-3 shadow-xl backdrop-blur-xl">
-            <div className="space-y-2">
-              <h1 className="text-2xl font-semibold text-[#09162a] leading-tight">{project.name}</h1>
-              {hasDescription ? (
-                <p className="max-w-3xl text-sm leading-relaxed text-slate-600">{project.description}</p>
-              ) : null}
+    <div className="relative min-h-screen overflow-x-clip bg-gradient-to-b from-slate-50 via-white to-slate-50">
+      <div className="pointer-events-none absolute -top-48 -left-40 h-[38rem] w-[38rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(129,187,38,0.14)_0%,_transparent_70%)] blur-3xl" />
+      <div className="pointer-events-none absolute bottom-[-18rem] right-[-22rem] h-[46rem] w-[46rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(28,49,69,0.10)_0%,_transparent_70%)] blur-3xl" />
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 pt-4 pb-8 sm:px-6">
+        <section className="flex flex-col gap-4">
+          <div className={`${PANEL} px-6 py-5`}>
+            <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+              <div className="min-w-0 space-y-2">
+                <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.01em] text-[#09162a]">
+                  {project.name}
+                </h1>
+                {hasDescription ? (
+                  <p className="max-w-3xl text-sm leading-relaxed text-slate-500">
+                    {project.description}
+                  </p>
+                ) : null}
+              </div>
+              <div className="shrink-0">
+                <p className={SECTION_LABEL}>Progress</p>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-2xl font-semibold tabular-nums text-[#09162a]">
+                    {completionPct}%
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    {taskStats.completedCount}/{totalTaskCount} tasks
+                  </span>
+                </div>
+                <div className="mt-2 h-1.5 w-44 overflow-hidden rounded-full bg-slate-200/70">
+                  <div
+                    className="h-full rounded-full bg-[#81bb26] transition-[width] duration-500 ease-out"
+                    style={{ width: `${completionPct}%` }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="grid gap-3 lg:grid-cols-2">
-            <div className="rounded-3xl border border-white/60 bg-white/80 p-4 shadow-xl backdrop-blur-xl">
-              <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Snapshot</h3>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className={`${PANEL} p-5`}>
+              <h3 className={SECTION_LABEL}>Snapshot</h3>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {highlightCards.map((card) => {
                   const Icon = card.icon;
                   return (
                     <div
                       key={card.label}
-                      className="flex items-center justify-between rounded-2xl border border-emerald-100/60 bg-white/80 p-3 shadow-sm backdrop-blur"
+                      className={`${INSET} flex items-center justify-between gap-3 p-3.5 transition-colors hover:border-slate-300/70`}
                     >
-                      <div>
-                        <p className="text-xs uppercase tracking-wide text-slate-500">{card.label}</p>
-                        <p className="mt-1 text-xl font-semibold text-[#09162a]">{card.value}</p>
-                        <p className="mt-1 text-xs text-slate-500">{card.helper}</p>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-400">
+                          {card.label}
+                        </p>
+                        <p className="mt-1.5 text-2xl font-semibold leading-none tabular-nums text-[#09162a]">
+                          {card.value}
+                        </p>
+                        <p className="mt-1.5 truncate text-xs text-slate-400">{card.helper}</p>
                       </div>
-                      <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${card.iconClasses}`}>
+                      <div
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${card.iconClasses}`}
+                      >
                         <Icon className="h-4 w-4" />
                       </div>
                     </div>
@@ -503,47 +552,63 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                 })}
               </div>
             </div>
-            <div className="rounded-3xl border border-white/60 bg-white/80 p-4 shadow-xl backdrop-blur-xl">
-              <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Next key dates</h3>
-              <div className="mt-4 space-y-2">
-                <div className="rounded-2xl border border-emerald-100/60 bg-white/90 p-3 shadow-sm backdrop-blur">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#81bb26]/15 text-[#09162a]">
+            <div className={`${PANEL} flex flex-col p-5`}>
+              <h3 className={SECTION_LABEL}>Next key dates</h3>
+              <div className="mt-4 grid flex-1 gap-3 sm:grid-cols-1">
+                <div className={`${INSET} p-3.5`}>
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[#1c3145]">
                       <List className="h-4 w-4" />
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-[#09162a]">Next due task</p>
-                      {taskStats.nextDue ? (
-                        <>
-                          <p className="text-xs text-slate-500">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-baseline gap-x-2">
+                        <p className="text-sm font-semibold text-[#09162a]">Next due task</p>
+                        {taskStats.nextDue ? (
+                          <span className="text-xs text-slate-400">
                             {formatDateDisplay(taskStats.nextDue.due_date!)}
                             {nextTaskAssignee ? ` · ${nextTaskAssignee}` : ""}
-                          </p>
-                          <p className="mt-1 text-sm text-slate-600">{taskStats.nextDue.title}</p>
-                        </>
+                          </span>
+                        ) : null}
+                      </div>
+                      {taskStats.nextDue ? (
+                        <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                          {taskStats.nextDue.title}
+                        </p>
                       ) : (
-                        <p className="text-xs text-slate-500">There are no upcoming due dates.</p>
+                        <p className="mt-1 text-sm text-slate-400">No upcoming due dates.</p>
                       )}
                     </div>
                   </div>
                 </div>
-                <div className="rounded-2xl border border-emerald-100/60 bg-white/90 p-3 shadow-sm backdrop-blur">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#09162a]/10 text-[#09162a]">
+                <div className={`${INSET} p-3.5`}>
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[#1c3145]">
                       <CalendarClock className="h-4 w-4" />
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-[#09162a]">Next KPI review</p>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-baseline gap-x-2">
+                        <p className="text-sm font-semibold text-[#09162a]">Next KPI review</p>
+                        {kpiStats.count > 0 && kpiStats.next ? (
+                          <span className="text-xs text-slate-400">
+                            {formatDateDisplay(kpiStats.next.measure_date)}
+                          </span>
+                        ) : null}
+                      </div>
                       {kpiStats.count > 0 && kpiStats.next ? (
                         <>
-                          <p className="text-xs text-slate-500">{formatDateDisplay(kpiStats.next.measure_date)}</p>
-                          <p className="mt-1 text-sm text-slate-600">{kpiStats.next.title}</p>
+                          <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                            {kpiStats.next.title}
+                          </p>
                           {kpiStats.next.result ? (
-                            <p className="mt-1 text-xs text-slate-500">Latest result: {kpiStats.next.result}</p>
+                            <p className="mt-1 text-xs text-slate-400">
+                              Latest result: {kpiStats.next.result}
+                            </p>
                           ) : null}
                         </>
                       ) : (
-                        <p className="text-xs text-slate-500">Add KPIs to start tracking milestones.</p>
+                        <p className="mt-1 text-sm text-slate-400">
+                          Add KPIs to start tracking milestones.
+                        </p>
                       )}
                     </div>
                   </div>
@@ -554,109 +619,67 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
         </section>
 
         <section>
-          <div className="overflow-hidden rounded-3xl border border-white/60 bg-white/80 shadow-xl backdrop-blur-xl">
-            <div className="flex flex-wrap items-center gap-1 border-b border-emerald-200/70 bg-slate-800 px-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setActiveTab("tasks")}
-                className={`relative -mb-px rounded-t-xl border px-3 py-2 text-sm font-semibold transition-colors ${
-                  activeTab === "tasks"
-                    ? "border-emerald-100/70 border-b-white/90 bg-white/90 text-[#09162a] shadow-sm"
-                    : "border-transparent text-slate-200 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                Tasks
-                <span
-                  className={`ml-2 inline-flex min-w-[1.5rem] items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    activeTab === "tasks"
-                      ? "bg-[#1c3145]/10 text-[#1c3145]"
-                      : "bg-white/20 text-white/80"
-                  }`}
-                >
-                  {tasks.length}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("kpis")}
-                className={`relative -mb-px rounded-t-xl border px-3 py-2 text-sm font-semibold transition-colors ${
-                  activeTab === "kpis"
-                    ? "border-emerald-100/70 border-b-white/90 bg-white/90 text-[#09162a] shadow-sm"
-                    : "border-transparent text-slate-200 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                KPIs
-                <span
-                  className={`ml-2 inline-flex min-w-[1.5rem] items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    activeTab === "kpis"
-                      ? "bg-[#1c3145]/10 text-[#1c3145]"
-                      : "bg-white/20 text-white/80"
-                  }`}
-                >
-                  {kpis.length}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("comments")}
-                className={`relative -mb-px rounded-t-xl border px-3 py-2 text-sm font-semibold transition-colors ${
-                  activeTab === "comments"
-                    ? "border-emerald-100/70 border-b-white/90 bg-white/90 text-[#09162a] shadow-sm"
-                    : "border-transparent text-slate-200 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                Comments
-                <span
-                  className={`ml-2 inline-flex min-w-[1.5rem] items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    activeTab === "comments"
-                      ? "bg-[#1c3145]/10 text-[#1c3145]"
-                      : "bg-white/20 text-white/80"
-                  }`}
-                >
-                  {commentCount}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("docs")}
-                className={`relative -mb-px rounded-t-xl border px-3 py-2 text-sm font-semibold transition-colors ${
-                  activeTab === "docs"
-                    ? "border-emerald-100/70 border-b-white/90 bg-white/90 text-[#09162a] shadow-sm"
-                    : "border-transparent text-slate-200 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                Docs & Sheets
-                <span
-                  className={`ml-2 inline-flex min-w-[1.5rem] items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    activeTab === "docs"
-                      ? "bg-[#1c3145]/10 text-[#1c3145]"
-                      : "bg-white/20 text-white/80"
-                  }`}
-                >
-                  {documentCount}
-                </span>
-              </button>
+          <div className={`${PANEL} overflow-hidden`}>
+            <div className="flex flex-wrap items-center gap-1 border-b border-slate-200/70 px-3 pt-2">
+              {(
+                [
+                  { key: "tasks", label: "Tasks", count: tasks.length },
+                  { key: "kpis", label: "KPIs", count: kpis.length },
+                  { key: "comments", label: "Comments", count: commentCount },
+                  { key: "docs", label: "Docs & Sheets", count: documentCount },
+                ] as { key: ProjectDetailsTab; label: string; count: number }[]
+              ).map((tab) => {
+                const isActive = activeTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setActiveTab(tab.key)}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`relative -mb-px flex items-center gap-2 rounded-t-lg px-3.5 py-2.5 text-sm font-medium transition-colors ${
+                      isActive
+                        ? "text-[#09162a]"
+                        : "text-slate-400 hover:bg-slate-50/80 hover:text-slate-600"
+                    }`}
+                  >
+                    {tab.label}
+                    <span
+                      className={`inline-flex min-w-[1.375rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums transition-colors ${
+                        isActive ? "bg-[#1c3145]/8 text-[#1c3145]" : "bg-slate-100 text-slate-400"
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                    <span
+                      aria-hidden
+                      className={`absolute inset-x-2 bottom-0 h-0.5 rounded-full transition-opacity ${
+                        isActive ? "bg-[#81bb26] opacity-100" : "opacity-0"
+                      }`}
+                    />
+                  </button>
+                );
+              })}
             </div>
 
-            <div className="bg-white/90 p-4">
+            <div className="p-5">
               {activeTab === "tasks" ? (
                 <div>
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-semibold text-[#09162a]">Tasks</h2>
-                  <p className="text-sm text-slate-500">
+                  <h2 className="text-lg font-semibold tracking-[-0.01em] text-[#09162a]">Tasks</h2>
+                  <p className="mt-0.5 text-sm text-slate-400">
                     {taskStats.openCount} active · {taskStats.completedCount} completed
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex overflow-hidden rounded-lg border border-emerald-100/80 bg-white/80 shadow-sm">
+                  <div className="flex gap-0.5 rounded-lg bg-slate-100 p-0.5">
                     <button
                       type="button"
                       onClick={() => setViewMode("list")}
-                      className={`flex items-center gap-2 px-3 py-1 text-sm font-medium transition-colors ${
+                      className={`flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-sm font-medium transition-colors ${
                         viewMode === "list"
-                          ? "bg-[#09162a] text-white shadow-inner"
-                          : "text-[#09162a] hover:bg-[#81bb26]/10"
+                          ? "bg-white text-[#09162a] shadow-sm"
+                          : "text-slate-500 hover:text-[#09162a]"
                       }`}
                     >
                       <List className="h-4 w-4" />
@@ -665,10 +688,10 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                     <button
                       type="button"
                       onClick={() => setViewMode("kanban")}
-                      className={`flex items-center gap-2 px-3 py-1 text-sm font-medium transition-colors ${
+                      className={`flex items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-sm font-medium transition-colors ${
                         viewMode === "kanban"
-                          ? "bg-[#09162a] text-white shadow-inner"
-                          : "text-[#09162a] hover:bg-[#81bb26]/10"
+                          ? "bg-white text-[#09162a] shadow-sm"
+                          : "text-slate-500 hover:text-[#09162a]"
                       }`}
                     >
                       <Columns className="h-4 w-4" />
@@ -683,9 +706,9 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                   />
                 </div>
               </div>
-              <div className="mt-3">
+              <div className="mt-4">
                 {viewMode === "kanban" ? (
-                  <div className="rounded-2xl border border-emerald-100/70 bg-white/90 p-3 shadow-sm backdrop-blur-sm">
+                  <div className={`${INSET} p-3`}>
                     <KanbanBoard
                       initialData={[
                         {
@@ -749,68 +772,69 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <div className="rounded-2xl border border-emerald-100/70 bg-white/90 p-3 shadow-sm backdrop-blur-sm">
+                    <div className={`${INSET} overflow-hidden`}>
                       <button
                         type="button"
                         onClick={() => setTodoOpen(!todoOpen)}
-                        className="flex w-full items-center justify-between gap-3 text-left"
+                        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50/70"
                       >
                         <div>
-                          <h3 className="text-lg font-semibold text-[#09162a]">
-                            Active tasks ({todoTasks.length})
+                          <h3 className="text-sm font-semibold text-[#09162a]">
+                            Active tasks
+                            <span className="ml-2 text-slate-400 tabular-nums">{todoTasks.length}</span>
                           </h3>
-                          <p className="mt-1 text-xs text-slate-500">Tasks that still need action</p>
+                          <p className="mt-0.5 text-xs text-slate-400">Tasks that still need action</p>
                         </div>
                         {todoOpen ? (
-                          <ChevronDown className="h-5 w-5 text-slate-500" />
+                          <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
                         ) : (
-                          <ChevronRight className="h-5 w-5 text-slate-500" />
+                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
                         )}
                       </button>
                       {todoOpen ? (
-                        <div className="mt-3 border border-emerald-100/70">
-                          <table className="w-full overflow-hidden rounded-2xl">
-                            <thead className="bg-emerald-100 text-emerald-900">
+                        <div className="overflow-x-auto border-t border-slate-200/70">
+                          <table className="w-full">
+                            <thead className={TABLE_HEAD}>
                               <tr>
                                 <th
-                                  className="px-4 py-2 text-left text-sm font-medium cursor-pointer"
+                                  className={TABLE_HEAD_CELL}
                                   onClick={() => handleTaskSort("title")}
                                 >
                                   Task{renderSortArrowForTasks("title")}
                                 </th>
                                 <th
-                                  className="px-4 py-2 text-left text-sm font-medium cursor-pointer"
+                                  className={TABLE_HEAD_CELL}
                                   onClick={() => handleTaskSort("status")}
                                 >
                                   Status{renderSortArrowForTasks("status")}
                                 </th>
                                 <th
-                                  className="px-4 py-2 text-left text-sm font-medium cursor-pointer"
+                                  className={TABLE_HEAD_CELL}
                                   onClick={() => handleTaskSort("assigned_to")}
                                 >
                                   Assignee{renderSortArrowForTasks("assigned_to")}
                                 </th>
                                 <th
-                                  className="px-4 py-2 text-left text-sm font-medium cursor-pointer"
+                                  className={TABLE_HEAD_CELL}
                                   onClick={() => handleTaskSort("due_date")}
                                 >
                                   Due{renderSortArrowForTasks("due_date")}
                                 </th>
-                                <th className="px-4 py-2 text-right text-sm font-medium">Actions</th>
+                                <th className="px-4 py-2.5 text-right">Actions</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-emerald-100 bg-white/95">
+                            <tbody className="divide-y divide-slate-100">
                               {todoTasks.map((task) => (
-                                <tr key={task.id} className="hover:bg-emerald-50/70">
-                                  <td className="px-4 py-2 whitespace-normal break-words text-sm text-gray-900">
+                                <tr key={task.id} className="transition-colors hover:bg-slate-50/70">
+                                  <td className="px-4 py-2.5 whitespace-normal break-words text-sm font-medium text-[#09162a]">
                                     {task.title}
                                   </td>
-                                  <td className="px-4 py-2 whitespace-nowrap text-sm">
+                                  <td className="px-4 py-2.5 whitespace-nowrap text-sm">
                                     <div className="flex items-center gap-2">
                                       {getTaskStatusIcon(task.status)}
                                       <Select
                                         value={task.status}
-                                        className="min-w-[110px] text-xs"
+                                        className={FIELD}
                                         onChange={(event) =>
                                           updateTaskStatus(
                                             task.id,
@@ -825,10 +849,10 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                                       </Select>
                                     </div>
                                   </td>
-                                  <td className="px-4 py-2 whitespace-nowrap text-sm">
+                                  <td className="px-4 py-2.5 whitespace-nowrap text-sm">
                                     <Select
                                       value={task.assigned_to || ""}
-                                      className="min-w-[110px] text-xs"
+                                      className={FIELD}
                                       onChange={(event) =>
                                         updateTaskAssignee(task.id, event.target.value)
                                       }
@@ -841,10 +865,10 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                                       ))}
                                     </Select>
                                   </td>
-                                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                  <td className="px-4 py-2.5 whitespace-nowrap text-sm tabular-nums text-slate-500">
                                     {task.due_date ? formatDateDisplay(task.due_date) : "-"}
                                   </td>
-                                  <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
+                                  <td className="px-4 py-2.5 whitespace-nowrap text-right text-sm font-medium">
                                     <div className="flex items-center justify-end gap-2">
                                       <EditTaskDialog
                                         task={task}
@@ -859,7 +883,7 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        className="text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                                        className={DELETE_BTN}
                                         onClick={() => deleteTask(task.id)}
                                       >
                                         <Trash2 className="w-4 h-4" />
@@ -873,68 +897,71 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                         </div>
                       ) : null}
                     </div>
-                    <div className="rounded-2xl border border-emerald-100/70 bg-white/90 p-3 shadow-sm backdrop-blur-sm">
+                    <div className={`${INSET} overflow-hidden`}>
                       <button
                         type="button"
                         onClick={() => setCompletedOpen(!completedOpen)}
-                        className="flex w-full items-center justify-between gap-3 text-left"
+                        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50/70"
                       >
                         <div>
-                          <h3 className="text-lg font-semibold text-[#09162a]">
-                            Completed ({completedTasks.length})
+                          <h3 className="text-sm font-semibold text-[#09162a]">
+                            Completed
+                            <span className="ml-2 text-slate-400 tabular-nums">
+                              {completedTasks.length}
+                            </span>
                           </h3>
-                          <p className="mt-1 text-xs text-slate-500">Recently signed off to-dos</p>
+                          <p className="mt-0.5 text-xs text-slate-400">Recently signed off to-dos</p>
                         </div>
                         {completedOpen ? (
-                          <ChevronDown className="h-5 w-5 text-slate-500" />
+                          <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
                         ) : (
-                          <ChevronRight className="h-5 w-5 text-slate-500" />
+                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
                         )}
                       </button>
                       {completedOpen ? (
-                        <div className="mt-3 border border-emerald-100/70">
-                          <table className="w-full overflow-hidden rounded-2xl">
-                            <thead className="bg-emerald-100 text-emerald-900">
+                        <div className="overflow-x-auto border-t border-slate-200/70">
+                          <table className="w-full">
+                            <thead className={TABLE_HEAD}>
                               <tr>
                                 <th
-                                  className="px-4 py-2 text-left text-sm font-medium cursor-pointer"
+                                  className={TABLE_HEAD_CELL}
                                   onClick={() => handleTaskSort("title")}
                                 >
                                   Task{renderSortArrowForTasks("title")}
                                 </th>
                                 <th
-                                  className="px-4 py-2 text-left text-sm font-medium cursor-pointer"
+                                  className={TABLE_HEAD_CELL}
                                   onClick={() => handleTaskSort("status")}
                                 >
                                   Status{renderSortArrowForTasks("status")}
                                 </th>
                                 <th
-                                  className="px-4 py-2 text-left text-sm font-medium cursor-pointer"
+                                  className={TABLE_HEAD_CELL}
                                   onClick={() => handleTaskSort("assigned_to")}
                                 >
                                   Assignee{renderSortArrowForTasks("assigned_to")}
                                 </th>
                                 <th
-                                  className="px-4 py-2 text-left text-sm font-medium cursor-pointer"
+                                  className={TABLE_HEAD_CELL}
                                   onClick={() => handleTaskSort("due_date")}
                                 >
                                   Completed{renderSortArrowForTasks("due_date")}
                                 </th>
-                                <th className="px-4 py-2 text-right text-sm font-medium">Actions</th>
+                                <th className="px-4 py-2.5 text-right">Actions</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-emerald-100 bg-white/95">
+                            <tbody className="divide-y divide-slate-100">
                               {completedTasks.map((task) => (
-                                <tr key={task.id} className="hover:bg-emerald-50/70">
-                                  <td className="px-4 py-2 whitespace-normal break-words text-sm text-gray-900">
+                                <tr key={task.id} className="transition-colors hover:bg-slate-50/70">
+                                  <td className="px-4 py-2.5 whitespace-normal break-words text-sm text-slate-500">
                                     {task.title}
                                   </td>
-                                  <td className="px-4 py-2 whitespace-nowrap text-sm">
+                                  <td className="px-4 py-2.5 whitespace-nowrap text-sm">
                                     <div className="flex items-center gap-2">
                                       {getTaskStatusIcon(task.status)}
                                       <Select
                                         value={task.status}
-                                        className="min-w-[110px] text-xs"
+                                        className={FIELD}
                                         onChange={(event) =>
                                           updateTaskStatus(
                                             task.id,
@@ -949,10 +976,10 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                                       </Select>
                                     </div>
                                   </td>
-                                  <td className="px-4 py-2 whitespace-nowrap text-sm">
+                                  <td className="px-4 py-2.5 whitespace-nowrap text-sm">
                                     <Select
                                       value={task.assigned_to || ""}
-                                      className="min-w-[110px] text-xs"
+                                      className={FIELD}
                                       onChange={(event) =>
                                         updateTaskAssignee(task.id, event.target.value)
                                       }
@@ -965,10 +992,10 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                                       ))}
                                     </Select>
                                   </td>
-                                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                  <td className="px-4 py-2.5 whitespace-nowrap text-sm tabular-nums text-slate-500">
                                     {task.due_date ? formatDateDisplay(task.due_date) : "-"}
                                   </td>
-                                  <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
+                                  <td className="px-4 py-2.5 whitespace-nowrap text-right text-sm font-medium">
                                     <div className="flex items-center justify-end gap-2">
                                       <EditTaskDialog
                                         task={task}
@@ -983,7 +1010,7 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        className="text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                                        className={DELETE_BTN}
                                         onClick={() => deleteTask(task.id)}
                                       >
                                         <Trash2 className="w-4 h-4" />
@@ -1007,8 +1034,8 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                 <div>
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-semibold text-[#09162a]">KPIs</h2>
-                  <p className="text-sm text-slate-500">
+                  <h2 className="text-lg font-semibold tracking-[-0.01em] text-[#09162a]">KPIs</h2>
+                  <p className="mt-0.5 text-sm text-slate-400">
                     {kpiStats.count ? `${kpiStats.count} metrics tracked` : "Track the numbers that matter"}
                   </p>
                 </div>
@@ -1017,41 +1044,42 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                   onKPICreated={(newKpi: KPI) => setKpis((prevKpis) => [newKpi, ...prevKpis])}
                 />
               </div>
-              <div className="mt-3">
+              <div className="mt-4">
                 {sortedKpis.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-emerald-200/70 bg-white/85 p-3 text-sm text-slate-500 backdrop-blur-sm">
+                  <div className="rounded-xl border border-dashed border-slate-300/80 bg-slate-50/50 px-4 py-8 text-center text-sm text-slate-400">
                     No KPIs yet. Add your first KPI to start monitoring progress.
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-emerald-100/70 bg-white/90 shadow-sm backdrop-blur-sm">
-                    <table className="w-full overflow-hidden rounded-2xl">
-                      <thead className="bg-emerald-100 text-emerald-900">
+                  <div className={`${INSET} overflow-hidden`}>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className={TABLE_HEAD}>
                         <tr>
                           <th
-                            className="px-4 py-2 text-left text-sm font-medium cursor-pointer"
+                            className={TABLE_HEAD_CELL}
                             onClick={() => handleKpiSort("title")}
                           >
                             KPI{renderSortArrowForKpis("title")}
                           </th>
                           <th
-                            className="px-4 py-2 text-left text-sm font-medium cursor-pointer"
+                            className={TABLE_HEAD_CELL}
                             onClick={() => handleKpiSort("measure_date")}
                           >
                             Measure Date{renderSortArrowForKpis("measure_date")}
                           </th>
-                          <th className="px-4 py-2 text-left text-sm font-medium">Result</th>
-                          <th className="px-4 py-2 text-right text-sm font-medium">Actions</th>
+                          <th className="px-4 py-2.5 text-left">Result</th>
+                          <th className="px-4 py-2.5 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-emerald-100 bg-white/95">
+                      <tbody className="divide-y divide-slate-100">
                         {sortedKpis.map((kpi) => (
-                          <tr key={kpi.id} className="hover:bg-emerald-50/70">
-                            <td className="px-4 py-2 text-sm text-gray-900">{kpi.title}</td>
-                            <td className="px-4 py-2 text-sm text-gray-900">
+                          <tr key={kpi.id} className="transition-colors hover:bg-slate-50/70">
+                            <td className="px-4 py-2.5 text-sm font-medium text-[#09162a]">{kpi.title}</td>
+                            <td className="px-4 py-2.5 text-sm tabular-nums text-slate-500">
                               {formatDateDisplay(kpi.measure_date)}
                             </td>
-                            <td className="px-4 py-2 text-sm text-gray-900">{kpi.result}</td>
-                            <td className="px-4 py-2 text-sm text-gray-900 text-right">
+                            <td className="px-4 py-2.5 text-sm text-slate-600">{kpi.result}</td>
+                            <td className="px-4 py-2.5 text-right text-sm">
                               <div className="flex items-center justify-end gap-2">
                                 <EditKPIDialog
                                   kpi={kpi}
@@ -1066,7 +1094,7 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                                  className={DELETE_BTN}
                                   onClick={() => deleteKPI(kpi.id)}
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -1076,7 +1104,8 @@ export default function ProjectDetails({ id }: ProjectDetailsProps) {
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>

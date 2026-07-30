@@ -4,18 +4,48 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { Project } from "@/types/database.types";
 import FilmstripCard from "./FilmstripCard";
+import ProjectCardMenu from "./ProjectCardMenu";
 
 type Props = {
   projects: Project[];
   progressOf: (projectId: string) => number;
   dueOf: (projectId: string) => string | null;
   onSelect: (projectId: string) => void;
+  onToggleComplete: (project: Project) => void;
+  onDelete: (project: Project) => void;
+  onProjectUpdated: (updated: Project) => void;
 };
 
-export default function BoardView({ projects, progressOf, dueOf, onSelect }: Props) {
+export default function BoardView({
+  projects,
+  progressOf,
+  dueOf,
+  onSelect,
+  onToggleComplete,
+  onDelete,
+  onProjectUpdated,
+}: Props) {
   const active = projects.filter((p) => !p.completed);
   const completed = projects.filter((p) => p.completed);
   const [completedOpen, setCompletedOpen] = useState(false);
+
+  const renderCard = (p: Project) => (
+    <FilmstripCard
+      key={p.id}
+      project={p}
+      progress={progressOf(p.id)}
+      dueDate={dueOf(p.id)}
+      onClick={() => onSelect(p.id)}
+      actions={
+        <ProjectCardMenu
+          project={p}
+          onToggleComplete={onToggleComplete}
+          onDelete={onDelete}
+          onProjectUpdated={onProjectUpdated}
+        />
+      }
+    />
+  );
 
   if (projects.length === 0) {
     return (
@@ -35,15 +65,7 @@ export default function BoardView({ projects, progressOf, dueOf, onSelect }: Pro
           <div className="text-sm text-white/45">Nothing here.</div>
         ) : (
           <div className="grid gap-[12px] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {active.map((p) => (
-              <FilmstripCard
-                key={p.id}
-                project={p}
-                progress={progressOf(p.id)}
-                dueDate={dueOf(p.id)}
-                onClick={() => onSelect(p.id)}
-              />
-            ))}
+            {active.map(renderCard)}
           </div>
         )}
       </div>
@@ -65,15 +87,7 @@ export default function BoardView({ projects, progressOf, dueOf, onSelect }: Pro
           </button>
           {completedOpen && (
             <div className="grid gap-[12px] opacity-70 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {completed.map((p) => (
-                <FilmstripCard
-                  key={p.id}
-                  project={p}
-                  progress={progressOf(p.id)}
-                  dueDate={dueOf(p.id)}
-                  onClick={() => onSelect(p.id)}
-                />
-              ))}
+              {completed.map(renderCard)}
             </div>
           )}
         </div>

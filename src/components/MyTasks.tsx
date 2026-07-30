@@ -335,7 +335,7 @@ export default function MyTasks() {
   }
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50">
+    <div className="relative min-h-screen overflow-x-clip bg-gradient-to-br from-slate-50 via-white to-emerald-50">
       <div className="pointer-events-none absolute -top-40 -left-32 h-[36rem] w-[36rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(129,187,38,0.28)_0%,_rgba(148,163,184,0.08)_60%,_transparent_100%)] blur-3xl" />
       <div className="pointer-events-none absolute bottom-[-14rem] right-[-20rem] h-[44rem] w-[44rem] rounded-full bg-[radial-gradient(circle_at_center,_rgba(56,189,248,0.22)_0%,_rgba(129,187,38,0.12)_55%,_transparent_100%)] blur-3xl" />
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-12 px-6 py-12">
