@@ -47,6 +47,10 @@ const FB_MIN_LEAD_MS = 10 * 60 * 1000;
 const IG_MIN_LEAD_MS = 5 * 60 * 1000;
 const DEFAULT_LEAD_MS = 60 * 60 * 1000; // 1 hour
 
+// Mirrors the API: a job the publish worker has already claimed ("processing")
+// can no longer be called off.
+const IG_CANCELLABLE_STATUSES = ["queued", "failed"];
+
 const buildDefaultDate = () => new Date(Date.now() + DEFAULT_LEAD_MS);
 
 const roundToNextQuarterHour = (date: Date) => {
@@ -106,6 +110,10 @@ export default function SocialScheduler() {
   const [igNotice, setIgNotice] = useState<string | null>(null);
   const [isProcessingIgQueue, setIsProcessingIgQueue] = useState(false);
   const [igQueueFeedback, setIgQueueFeedback] = useState<string | null>(null);
+  const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
+  const [deleteFeedback, setDeleteFeedback] = useState<
+    { type: "success" | "error"; message: string } | null
+  >(null);
 
   const resetForm = useCallback(() => {
     setMessage("");
@@ -222,6 +230,59 @@ export default function SocialScheduler() {
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  // ─── Cancel a scheduled post ────────────────────────────────────────────────
+
+  const handleDeletePost = useCallback(
+    async (platform: Platform, postId: string, preview: string) => {
+      const label = platform === "facebook" ? "Facebook" : "Instagram";
+      const snippet = preview.trim().slice(0, 80);
+      const confirmed = window.confirm(
+        `Cancel this scheduled ${label} post?\n\n${snippet || "(no message)"}${
+          preview.trim().length > 80 ? "..." : ""
+        }\n\nThis cannot be undone.`
+      );
+      if (!confirmed) return;
+
+      setDeletingPostId(postId);
+      setDeleteFeedback(null);
+      try {
+        const endpoint =
+          platform === "facebook"
+            ? `/api/facebook/scheduled-posts?id=${encodeURIComponent(postId)}`
+            : `/api/instagram/scheduled-posts?id=${encodeURIComponent(postId)}`;
+
+        const response = await fetch(endpoint, { method: "DELETE" });
+        const payload = (await response.json()) as { success?: boolean; error?: string };
+
+        if (!response.ok) {
+          setDeleteFeedback({
+            type: "error",
+            message: payload?.error || `Unable to cancel the ${label} post.`,
+          });
+          return;
+        }
+
+        if (platform === "facebook") {
+          setFacebookPosts((current) => current.filter((post) => post.id !== postId));
+          fetchFacebookPosts();
+        } else {
+          setInstagramPosts((current) => current.filter((post) => post.id !== postId));
+          fetchInstagramPosts();
+        }
+
+        setDeleteFeedback({ type: "success", message: `${label} post cancelled.` });
+      } catch (error) {
+        setDeleteFeedback({
+          type: "error",
+          message: error instanceof Error ? error.message : `Unable to cancel the ${label} post.`,
+        });
+      } finally {
+        setDeletingPostId(null);
+      }
+    },
+    [fetchFacebookPosts, fetchInstagramPosts]
+  );
 
   // ─── Schedule handlers ───────────────────────────────────────────────────────
 
@@ -531,6 +592,19 @@ export default function SocialScheduler() {
             </div>
           )}
 
+          {deleteFeedback && (
+            <div
+              className={cn(
+                "mb-4 rounded-md border px-4 py-3 text-sm",
+                deleteFeedback.type === "success"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-red-200 bg-red-50 text-red-700"
+              )}
+            >
+              {deleteFeedback.message}
+            </div>
+          )}
+
           {/* Tabs */}
           <div className="mb-4 flex gap-1 border-b border-slate-200">
             {(["facebook", "instagram"] as Tab[]).map((tab) => (
@@ -585,6 +659,7 @@ export default function SocialScheduler() {
                     <th className="px-4 py-3">Scheduled for</th>
                     <th className="px-4 py-3">Created</th>
                     <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
@@ -607,6 +682,23 @@ export default function SocialScheduler() {
                         <td className="px-4 py-3 align-top text-slate-700">
                           {post.status ? post.status.replace(/_/g, " ") : "—"}
                         </td>
+                        <td className="px-4 py-3 align-top text-right">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                            onClick={() => handleDeletePost("facebook", post.id, post.message ?? "")}
+                            disabled={deletingPostId === post.id}
+                          >
+                            {deletingPostId === post.id ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="mr-2 h-4 w-4" />
+                            )}
+                            {deletingPostId === post.id ? "Cancelling..." : "Cancel"}
+                          </Button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -623,6 +715,7 @@ export default function SocialScheduler() {
                     <th className="px-4 py-3">Caption</th>
                     <th className="px-4 py-3">Scheduled for</th>
                     <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
@@ -630,6 +723,8 @@ export default function SocialScheduler() {
                     const scheduledDate = post.scheduled_publish_time
                       ? new Date(post.scheduled_publish_time * 1000)
                       : null;
+                    const isCancellable =
+                      !post.status || IG_CANCELLABLE_STATUSES.includes(post.status);
                     return (
                       <tr key={post.id} className="hover:bg-slate-50">
                         <td className="max-w-[280px] px-4 py-3 align-top">
@@ -645,6 +740,29 @@ export default function SocialScheduler() {
                               <p className="max-w-[320px] text-xs text-red-600">{post.error_message}</p>
                             )}
                           </div>
+                        </td>
+                        <td className="px-4 py-3 align-top text-right">
+                          {isCancellable ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                              onClick={() =>
+                                handleDeletePost("instagram", post.id, post.caption ?? "")
+                              }
+                              disabled={deletingPostId === post.id}
+                            >
+                              {deletingPostId === post.id ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="mr-2 h-4 w-4" />
+                              )}
+                              {deletingPostId === post.id ? "Cancelling..." : "Cancel"}
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-slate-500">Publishing...</span>
+                          )}
                         </td>
                       </tr>
                     );
