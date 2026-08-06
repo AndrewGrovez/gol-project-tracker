@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Loader2, Plus, RefreshCw, Trash2, Upload } from "lucide-react";
+import { Loader2, Pencil, Plus, RefreshCw, Trash2, Upload } from "lucide-react";
 import "react-datepicker/dist/react-datepicker.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -19,6 +19,7 @@ interface FacebookScheduledPost {
   scheduled_publish_time?: number;
   created_time: string;
   status?: string;
+  image_name?: string | null;
 }
 
 interface InstagramScheduledPost {
@@ -28,6 +29,7 @@ interface InstagramScheduledPost {
   scheduled_publish_time?: number;
   status?: string;
   error_message?: string | null;
+  image_name?: string | null;
 }
 
 interface ScheduleResult {
@@ -114,6 +116,10 @@ export default function SocialScheduler() {
   const [deleteFeedback, setDeleteFeedback] = useState<
     { type: "success" | "error"; message: string } | null
   >(null);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const resetForm = useCallback(() => {
     setMessage("");
@@ -230,6 +236,80 @@ export default function SocialScheduler() {
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  // ─── Edit a scheduled post's text ───────────────────────────────────────────
+
+  const handleStartEdit = useCallback((postId: string, currentText: string) => {
+    setEditingPostId(postId);
+    setEditingText(currentText);
+    setEditError(null);
+    setDeleteFeedback(null);
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingPostId(null);
+    setEditingText("");
+    setEditError(null);
+  }, []);
+
+  const handleSaveEdit = useCallback(
+    async (platform: Platform, postId: string) => {
+      const text = editingText.trim();
+      if (!text) {
+        setEditError(
+          platform === "facebook" ? "Message cannot be empty." : "Caption cannot be empty."
+        );
+        return;
+      }
+
+      setIsSavingEdit(true);
+      setEditError(null);
+      try {
+        const endpoint =
+          platform === "facebook"
+            ? `/api/facebook/scheduled-posts?id=${encodeURIComponent(postId)}`
+            : `/api/instagram/scheduled-posts?id=${encodeURIComponent(postId)}`;
+
+        const response = await fetch(endpoint, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            platform === "facebook" ? { message: text } : { caption: text }
+          ),
+        });
+        const payload = (await response.json()) as { success?: boolean; error?: string };
+
+        if (!response.ok) {
+          setEditError(payload?.error || "Unable to save the changes.");
+          return;
+        }
+
+        if (platform === "facebook") {
+          setFacebookPosts((current) =>
+            current.map((post) => (post.id === postId ? { ...post, message: text } : post))
+          );
+          fetchFacebookPosts();
+        } else {
+          setInstagramPosts((current) =>
+            current.map((post) => (post.id === postId ? { ...post, caption: text } : post))
+          );
+          fetchInstagramPosts();
+        }
+
+        setEditingPostId(null);
+        setEditingText("");
+        setDeleteFeedback({
+          type: "success",
+          message: `${platform === "facebook" ? "Facebook" : "Instagram"} post updated.`,
+        });
+      } catch (error) {
+        setEditError(error instanceof Error ? error.message : "Unable to save the changes.");
+      } finally {
+        setIsSavingEdit(false);
+      }
+    },
+    [editingText, fetchFacebookPosts, fetchInstagramPosts]
+  );
 
   // ─── Cancel a scheduled post ────────────────────────────────────────────────
 
@@ -656,6 +736,7 @@ export default function SocialScheduler() {
                 <thead className="bg-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
                   <tr>
                     <th className="px-4 py-3">Message</th>
+                    <th className="px-4 py-3">Image</th>
                     <th className="px-4 py-3">Scheduled for</th>
                     <th className="px-4 py-3">Created</th>
                     <th className="px-4 py-3">Status</th>
@@ -671,7 +752,49 @@ export default function SocialScheduler() {
                     return (
                       <tr key={post.id} className="hover:bg-slate-50">
                         <td className="max-w-[280px] px-4 py-3 align-top">
-                          <p className="whitespace-pre-wrap text-slate-800">{post.message?.trim() || "—"}</p>
+                          {editingPostId === post.id ? (
+                            <div className="space-y-2">
+                              <Textarea
+                                value={editingText}
+                                onChange={(e) => setEditingText(e.target.value)}
+                                rows={4}
+                                disabled={isSavingEdit}
+                                autoFocus
+                              />
+                              {editError && <p className="text-xs text-red-600">{editError}</p>}
+                              <div className="flex gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => handleSaveEdit("facebook", post.id)}
+                                  disabled={isSavingEdit}
+                                >
+                                  {isSavingEdit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                  {isSavingEdit ? "Saving..." : "Save"}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={handleCancelEdit}
+                                  disabled={isSavingEdit}
+                                >
+                                  Discard
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="whitespace-pre-wrap text-slate-800">{post.message?.trim() || "—"}</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 align-top text-slate-700">
+                          {post.image_name ? (
+                            <span className="break-all font-mono text-xs text-slate-600">
+                              {post.image_name}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
                         </td>
                         <td className="px-4 py-3 align-top text-slate-700">
                           {scheduledDate ? format(scheduledDate, "dd MMM yyyy HH:mm") : "—"}
@@ -683,6 +806,16 @@ export default function SocialScheduler() {
                           {post.status ? post.status.replace(/_/g, " ") : "—"}
                         </td>
                         <td className="px-4 py-3 align-top text-right">
+                          <div className="flex justify-end gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleStartEdit(post.id, post.message ?? "")}
+                            disabled={editingPostId === post.id || deletingPostId === post.id}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" /> Edit
+                          </Button>
                           <Button
                             type="button"
                             variant="ghost"
@@ -698,6 +831,7 @@ export default function SocialScheduler() {
                             )}
                             {deletingPostId === post.id ? "Cancelling..." : "Cancel"}
                           </Button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -713,6 +847,7 @@ export default function SocialScheduler() {
                 <thead className="bg-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
                   <tr>
                     <th className="px-4 py-3">Caption</th>
+                    <th className="px-4 py-3">Image</th>
                     <th className="px-4 py-3">Scheduled for</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3 text-right">Actions</th>
@@ -728,7 +863,49 @@ export default function SocialScheduler() {
                     return (
                       <tr key={post.id} className="hover:bg-slate-50">
                         <td className="max-w-[280px] px-4 py-3 align-top">
-                          <p className="whitespace-pre-wrap text-slate-800">{post.caption?.trim() || "—"}</p>
+                          {editingPostId === post.id ? (
+                            <div className="space-y-2">
+                              <Textarea
+                                value={editingText}
+                                onChange={(e) => setEditingText(e.target.value)}
+                                rows={4}
+                                disabled={isSavingEdit}
+                                autoFocus
+                              />
+                              {editError && <p className="text-xs text-red-600">{editError}</p>}
+                              <div className="flex gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => handleSaveEdit("instagram", post.id)}
+                                  disabled={isSavingEdit}
+                                >
+                                  {isSavingEdit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                  {isSavingEdit ? "Saving..." : "Save"}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={handleCancelEdit}
+                                  disabled={isSavingEdit}
+                                >
+                                  Discard
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="whitespace-pre-wrap text-slate-800">{post.caption?.trim() || "—"}</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 align-top text-slate-700">
+                          {post.image_name ? (
+                            <span className="break-all font-mono text-xs text-slate-600">
+                              {post.image_name}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
                         </td>
                         <td className="px-4 py-3 align-top text-slate-700">
                           {scheduledDate ? format(scheduledDate, "dd MMM yyyy HH:mm") : "—"}
@@ -743,23 +920,34 @@ export default function SocialScheduler() {
                         </td>
                         <td className="px-4 py-3 align-top text-right">
                           {isCancellable ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                              onClick={() =>
-                                handleDeletePost("instagram", post.id, post.caption ?? "")
-                              }
-                              disabled={deletingPostId === post.id}
-                            >
-                              {deletingPostId === post.id ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="mr-2 h-4 w-4" />
-                              )}
-                              {deletingPostId === post.id ? "Cancelling..." : "Cancel"}
-                            </Button>
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleStartEdit(post.id, post.caption ?? "")}
+                                disabled={editingPostId === post.id || deletingPostId === post.id}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" /> Edit
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                                onClick={() =>
+                                  handleDeletePost("instagram", post.id, post.caption ?? "")
+                                }
+                                disabled={deletingPostId === post.id}
+                              >
+                                {deletingPostId === post.id ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                )}
+                                {deletingPostId === post.id ? "Cancelling..." : "Cancel"}
+                              </Button>
+                            </div>
                           ) : (
                             <span className="text-xs text-slate-500">Publishing...</span>
                           )}

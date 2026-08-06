@@ -27,6 +27,7 @@ interface InstagramQueuedInsert {
   created_by: string;
   caption: string;
   image_url: string;
+  image_name: string | null;
   scheduled_for: string;
 }
 
@@ -174,6 +175,33 @@ async function processFacebook(
   return results;
 }
 
+// Meta does not retain the uploaded file name, so keep our own record of it
+// against the returned Graph post id.
+async function recordFacebookImageNames(
+  results: ScheduleResult[],
+  originalImageName: string | null,
+  createdByUserId: string
+) {
+  if (!originalImageName) return;
+
+  const rows = results
+    .filter((result) => !result.error && result.externalId)
+    .map((result) => ({
+      post_id: result.externalId!,
+      image_name: originalImageName,
+      created_by: createdByUserId,
+    }));
+
+  if (rows.length === 0) return;
+
+  const supabase = createServiceRoleClient();
+  // Best effort: a missing file name must never fail an otherwise good schedule.
+  await supabase
+    .from("facebook_scheduled_post_images")
+    .upsert(rows, { onConflict: "post_id" })
+    .then(undefined, () => null);
+}
+
 async function queueInstagramPosts(
   caption: string,
   scheduledTimes: string[],
@@ -181,6 +209,7 @@ async function queueInstagramPosts(
   imageBuffer: ArrayBuffer | null,
   imageMime: string,
   imageName: string,
+  originalImageName: string | null,
   createdByUserId: string
 ): Promise<ScheduleResult[]> {
   const configError = getInstagramPublishingConfigError();
@@ -236,6 +265,7 @@ async function queueInstagramPosts(
         created_by: createdByUserId,
         caption,
         image_url: imageUrl,
+        image_name: originalImageName,
         scheduled_for: date.toISOString(),
       },
     });
@@ -327,6 +357,7 @@ export async function POST(request: Request) {
     const imageBuffer = image ? await image.arrayBuffer() : null;
     const imageMime = image?.type || "image/jpeg";
     const imageName = image?.name || "image.jpg";
+    const originalImageName = image?.name?.trim() || null;
 
     const platformResults: PlatformResults = {};
     const tasks: Promise<void>[] = [];
@@ -334,8 +365,9 @@ export async function POST(request: Request) {
     if (platforms.includes("facebook")) {
       tasks.push(
         processFacebook(message, scheduledTimes, nowSeconds, imageBuffer, imageMime, imageName).then(
-          (results) => {
+          async (results) => {
             platformResults.facebook = results;
+            await recordFacebookImageNames(results, originalImageName, user.id);
           }
         )
       );
@@ -350,6 +382,7 @@ export async function POST(request: Request) {
           imageBuffer,
           imageMime,
           imageName,
+          originalImageName,
           user.id
         ).then((results) => {
           platformResults.instagram = results;
