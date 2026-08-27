@@ -175,6 +175,12 @@ async function processFacebook(
   return results;
 }
 
+// The /photos endpoint returns a bare photo id, but the scheduled-posts listing
+// keys off "{page id}_{photo id}". Store the latter so the two actually match —
+// /feed already hands back the prefixed form, hence the guard.
+const toPagePostId = (externalId: string) =>
+  externalId.includes("_") ? externalId : `${FB_PAGE_ID}_${externalId}`;
+
 // Meta does not retain the uploaded file name, so keep our own record of it
 // against the returned Graph post id.
 async function recordFacebookImageNames(
@@ -187,7 +193,7 @@ async function recordFacebookImageNames(
   const rows = results
     .filter((result) => !result.error && result.externalId)
     .map((result) => ({
-      post_id: result.externalId!,
+      post_id: toPagePostId(result.externalId!),
       image_name: originalImageName,
       created_by: createdByUserId,
     }));
