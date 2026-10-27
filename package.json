@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:social": "node --test tests/social-scheduler-accounts.test.cjs"
   },
   "dependencies": {
     "@google-analytics/data": "^4.12.0",

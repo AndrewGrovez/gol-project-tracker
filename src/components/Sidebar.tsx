@@ -188,7 +188,7 @@ const Sidebar = () => {
             }
 
             const Icon = item.icon;
-            const isActive = pathname === item.path;
+            const isActive = pathname === item.path || (item.path === "/facebook" && pathname === "/dref-wen");
             
             return (
               <div key={`item-${index}`}>

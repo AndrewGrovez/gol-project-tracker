@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getRequestSocialAccount, requireSocialAccount, requestAccountValue, SocialAccountError, socialAccountErrorResponse } from "@/lib/social/accounts";
 
 const FACEBOOK_ACCESS_TOKEN = process.env.FACEBOOK_ACCESS_TOKEN;
 const FACEBOOK_PAGE_ID = process.env.FACEBOOK_PAGE_ID;
@@ -122,7 +123,10 @@ async function scheduleFacebookPost(
 
 export async function POST(req: Request) {
   try {
+    const { user } = await getRequestSocialAccount(req);
     const formData = await req.formData();
+    const account = requireSocialAccount(requestAccountValue(req, formData.get("account")), user.id);
+    if (account.key !== "gol") throw new SocialAccountError("Use the social scheduler endpoint for this account.", 400);
     const message = (formData.get("message")?.toString() || "").trim();
     const scheduledTimesRaw = formData.get("scheduledTimes");
     const imageFile = formData.get("image");
@@ -237,7 +241,6 @@ export async function POST(req: Request) {
       { status: hasErrors ? 207 : 200 }
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected server error.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return socialAccountErrorResponse(error);
   }
 }

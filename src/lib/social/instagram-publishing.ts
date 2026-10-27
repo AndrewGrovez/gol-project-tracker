@@ -1,5 +1,5 @@
-const IG_ACCESS_TOKEN = process.env.INSTAGRAM_ACCESS_TOKEN;
-const IG_ACCOUNT_ID = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
+import { getSocialAccountConfig, type SocialAccountConfig } from "./accounts";
+import type { SocialAccountKey } from "./account-types";
 
 interface GraphApiError {
   message?: string;
@@ -23,9 +23,10 @@ const RETRYABLE_PUBLISH_PATTERNS = [
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export const getInstagramPublishingConfigError = () => {
-  if (!IG_ACCESS_TOKEN || !IG_ACCOUNT_ID) {
-    return "INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_BUSINESS_ACCOUNT_ID are not configured.";
+export const getInstagramPublishingConfigError = (accountKey: SocialAccountKey = "gol") => {
+  const account = getSocialAccountConfig(accountKey);
+  if (!account.instagramAccessToken || !account.instagramAccountId) {
+    return `${account.label}'s Instagram account has not been connected.`;
   }
 
   return null;
@@ -41,14 +42,14 @@ export const mapInstagramGraphError = (error?: GraphApiError) => {
   return error?.error_user_msg || error?.message || "Instagram API request failed.";
 };
 
-async function publishContainer(creationId: string) {
+async function publishContainer(creationId: string, account: SocialAccountConfig) {
   const publishParams = new URLSearchParams({
     creation_id: creationId,
-    access_token: IG_ACCESS_TOKEN!,
+    access_token: account.instagramAccessToken!,
   });
 
   const publishRes = await fetch(
-    `https://graph.facebook.com/v22.0/${IG_ACCOUNT_ID}/media_publish`,
+    `https://graph.facebook.com/v22.0/${account.instagramAccountId}/media_publish`,
     { method: "POST", body: publishParams }
   );
 
@@ -63,22 +64,24 @@ async function publishContainer(creationId: string) {
 
 export async function findRecentInstagramMediaByCaption(
   caption: string,
-  scheduledForIso: string
+  scheduledForIso: string,
+  accountKey: SocialAccountKey = "gol"
 ): Promise<InstagramMediaEntry | null> {
-  const configError = getInstagramPublishingConfigError();
+  const configError = getInstagramPublishingConfigError(accountKey);
   if (configError) {
     throw new Error(configError);
   }
 
+  const account = getSocialAccountConfig(accountKey);
   const scheduledAtMs = new Date(scheduledForIso).getTime();
   if (Number.isNaN(scheduledAtMs)) {
     return null;
   }
 
-  const mediaUrl = new URL(`https://graph.facebook.com/v22.0/${IG_ACCOUNT_ID}/media`);
+  const mediaUrl = new URL(`https://graph.facebook.com/v22.0/${account.instagramAccountId}/media`);
   mediaUrl.searchParams.set("fields", "id,caption,timestamp");
   mediaUrl.searchParams.set("limit", "25");
-  mediaUrl.searchParams.set("access_token", IG_ACCESS_TOKEN!);
+  mediaUrl.searchParams.set("access_token", account.instagramAccessToken!);
 
   const mediaRes = await fetch(mediaUrl, { cache: "no-store" });
   const mediaData = await mediaRes.json() as {
@@ -109,21 +112,23 @@ export async function findRecentInstagramMediaByCaption(
 
 export async function publishInstagramImageNow(
   caption: string,
-  imageUrl: string
+  imageUrl: string,
+  accountKey: SocialAccountKey = "gol"
 ): Promise<string | undefined> {
-  const configError = getInstagramPublishingConfigError();
+  const configError = getInstagramPublishingConfigError(accountKey);
   if (configError) {
     throw new Error(configError);
   }
 
+  const account = getSocialAccountConfig(accountKey);
   const containerParams = new URLSearchParams({
     image_url: imageUrl,
     caption,
-    access_token: IG_ACCESS_TOKEN!,
+    access_token: account.instagramAccessToken!,
   });
 
   const containerRes = await fetch(
-    `https://graph.facebook.com/v22.0/${IG_ACCOUNT_ID}/media`,
+    `https://graph.facebook.com/v22.0/${account.instagramAccountId}/media`,
     { method: "POST", body: containerParams }
   );
 
@@ -140,7 +145,7 @@ export async function publishInstagramImageNow(
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      return await publishContainer(creationId);
+      return await publishContainer(creationId, account);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Instagram publish failed.";
       const shouldRetry = RETRYABLE_PUBLISH_PATTERNS.some((pattern) => pattern.test(message));

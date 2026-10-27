@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
-
-const ACCESS_TOKEN = process.env.FACEBOOK_ACCESS_TOKEN;
-const PAGE_ID = process.env.FACEBOOK_PAGE_ID;
+import { getRequestSocialAccount, socialAccountErrorResponse, type SocialAccountConfig } from "@/lib/social/accounts";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface ScheduledPost {
   id: string;
@@ -24,13 +22,13 @@ interface ScheduledPostsResponse {
   };
 }
 
-async function fetchScheduledPosts(): Promise<
+async function fetchScheduledPosts(account: SocialAccountConfig): Promise<
   { ok: true; posts: ScheduledPost[] } | { ok: false; error: string; status: number }
 > {
-  const url = new URL(`https://graph.facebook.com/v22.0/${PAGE_ID}/scheduled_posts`);
+  const url = new URL(`https://graph.facebook.com/v22.0/${account.facebookPageId}/scheduled_posts`);
   url.searchParams.set("fields", "id,message,created_time,scheduled_publish_time,status");
   url.searchParams.set("limit", "50");
-  url.searchParams.set("access_token", ACCESS_TOKEN!);
+  url.searchParams.set("access_token", account.facebookAccessToken!);
 
   const response = await fetch(url, { cache: "no-store" });
   const data = (await response.json()) as ScheduledPostsResponse & {
@@ -50,13 +48,12 @@ async function fetchScheduledPosts(): Promise<
 
 // Meta does not return the uploaded file name, so look it up in our sidecar
 // table. Best effort — the list still renders without it.
-async function loadImageNames(postIds: string[]): Promise<Record<string, string>> {
+async function loadImageNames(postIds: string[], account: SocialAccountConfig, supabase: SupabaseClient): Promise<Record<string, string>> {
   if (postIds.length === 0) return {};
 
   try {
-    const supabase = await createClient();
     const { data, error } = await supabase
-      .from("facebook_scheduled_post_images")
+      .from(account.facebookImagesTable)
       .select("post_id, image_name")
       .in("post_id", postIds);
 
@@ -73,53 +70,28 @@ async function loadImageNames(postIds: string[]): Promise<Record<string, string>
   }
 }
 
-export async function GET() {
-  if (!ACCESS_TOKEN || !PAGE_ID) {
-    return NextResponse.json(
-      { error: "FACEBOOK_ACCESS_TOKEN and FACEBOOK_PAGE_ID must be configured." },
-      { status: 500 }
-    );
-  }
-
+export async function GET(request: Request) {
   try {
-    const result = await fetchScheduledPosts();
-
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: result.status });
+    const { account, supabase } = await getRequestSocialAccount(request);
+    if (!account.facebookAccessToken || !account.facebookPageId) {
+      return NextResponse.json({ error: `${account.label}'s Facebook Page has not been connected.` }, { status: 503 });
     }
-
-    const imageNames = await loadImageNames(result.posts.map((post) => post.id));
-
-    return NextResponse.json({
-      data: result.posts.map((post) => ({
-        ...post,
-        image_name: imageNames[post.id] ?? null,
-      })),
-    });
+    const result = await fetchScheduledPosts(account);
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+    const imageNames = await loadImageNames(result.posts.map((post) => post.id), account, supabase);
+    return NextResponse.json({ data: result.posts.map((post) => ({ ...post, image_name: imageNames[post.id] ?? null })) });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected server error.";
-    return NextResponse.json(
-      { error: message },
-      { status: 500 }
-    );
+    return socialAccountErrorResponse(error);
   }
 }
 
 export async function PATCH(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const { account } = await getRequestSocialAccount(request);
 
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!ACCESS_TOKEN || !PAGE_ID) {
+    if (!account.facebookAccessToken || !account.facebookPageId) {
       return NextResponse.json(
-        { error: "FACEBOOK_ACCESS_TOKEN and FACEBOOK_PAGE_ID must be configured." },
+        { error: `${account.label}'s Facebook Page has not been connected.` },
         { status: 500 }
       );
     }
@@ -137,7 +109,7 @@ export async function PATCH(request: Request) {
     }
 
     // Same guard as DELETE: only touch posts still scheduled on this Page.
-    const scheduled = await fetchScheduledPosts();
+    const scheduled = await fetchScheduledPosts(account);
     if (!scheduled.ok) {
       return NextResponse.json({ error: scheduled.error }, { status: scheduled.status });
     }
@@ -151,7 +123,7 @@ export async function PATCH(request: Request) {
 
     const params = new URLSearchParams({
       message: newMessage,
-      access_token: ACCESS_TOKEN,
+      access_token: account.facebookAccessToken,
     });
 
     const response = await fetch(
@@ -178,26 +150,17 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ success: true, id: postId, message: newMessage });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected server error.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return socialAccountErrorResponse(error);
   }
 }
 
 export async function DELETE(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const { account } = await getRequestSocialAccount(request);
 
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!ACCESS_TOKEN || !PAGE_ID) {
+    if (!account.facebookAccessToken || !account.facebookPageId) {
       return NextResponse.json(
-        { error: "FACEBOOK_ACCESS_TOKEN and FACEBOOK_PAGE_ID must be configured." },
+        { error: `${account.label}'s Facebook Page has not been connected.` },
         { status: 500 }
       );
     }
@@ -209,7 +172,7 @@ export async function DELETE(request: Request) {
 
     // Only allow deleting posts that are currently scheduled on this page, so an
     // arbitrary Graph object id can never be passed through to the delete call.
-    const scheduled = await fetchScheduledPosts();
+    const scheduled = await fetchScheduledPosts(account);
     if (!scheduled.ok) {
       return NextResponse.json({ error: scheduled.error }, { status: scheduled.status });
     }
@@ -222,7 +185,7 @@ export async function DELETE(request: Request) {
     }
 
     const deleteUrl = new URL(`https://graph.facebook.com/v22.0/${encodeURIComponent(postId)}`);
-    deleteUrl.searchParams.set("access_token", ACCESS_TOKEN);
+    deleteUrl.searchParams.set("access_token", account.facebookAccessToken);
 
     const response = await fetch(deleteUrl, { method: "DELETE", cache: "no-store" });
     const data = (await response.json()) as {
@@ -244,7 +207,6 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true, id: postId });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected server error.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return socialAccountErrorResponse(error);
   }
 }
