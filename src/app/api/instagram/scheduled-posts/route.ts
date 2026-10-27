@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
+import { getRequestSocialAccount, socialAccountErrorResponse } from "@/lib/social/accounts";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 
 interface InstagramScheduledPostRow {
@@ -46,20 +46,12 @@ const createServiceRoleClient = () =>
     }
   );
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { supabase, user, account } = await getRequestSocialAccount(request);
 
     const { data, error } = await supabase
-      .from("instagram_scheduled_posts")
+      .from(account.instagramQueueTable)
       .select("id, caption, scheduled_for, status, error_message, image_name, image_url")
       .eq("created_by", user.id)
       .not("status", "in", '("published","cancelled")')
@@ -88,22 +80,13 @@ export async function GET() {
         "Instagram posts shown here are managed by the app queue and published through the immediate Instagram publish API within a few minutes of the scheduled time.",
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected server error.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return socialAccountErrorResponse(error);
   }
 }
 
 export async function PATCH(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { supabase, user, account } = await getRequestSocialAccount(request);
 
     const postId = new URL(request.url).searchParams.get("id")?.trim();
     if (!postId) {
@@ -118,7 +101,7 @@ export async function PATCH(request: Request) {
     }
 
     const { data: existing, error: lookupError } = await supabase
-      .from("instagram_scheduled_posts")
+      .from(account.instagramQueueTable)
       .select("id, status")
       .eq("id", postId)
       .eq("created_by", user.id)
@@ -151,7 +134,7 @@ export async function PATCH(request: Request) {
 
     const serviceClient = createServiceRoleClient();
     const { data: updated, error: updateError } = await serviceClient
-      .from("instagram_scheduled_posts")
+      .from(account.instagramQueueTable)
       .update({ caption })
       .eq("id", postId)
       .eq("created_by", user.id)
@@ -174,22 +157,13 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ success: true, id: postId, caption });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected server error.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return socialAccountErrorResponse(error);
   }
 }
 
 export async function DELETE(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { supabase, user, account } = await getRequestSocialAccount(request);
 
     const postId = new URL(request.url).searchParams.get("id")?.trim();
     if (!postId) {
@@ -197,7 +171,7 @@ export async function DELETE(request: Request) {
     }
 
     const { data: existing, error: lookupError } = await supabase
-      .from("instagram_scheduled_posts")
+      .from(account.instagramQueueTable)
       .select("id, status")
       .eq("id", postId)
       .eq("created_by", user.id)
@@ -232,7 +206,7 @@ export async function DELETE(request: Request) {
     // a select grant on this table.
     const serviceClient = createServiceRoleClient();
     const { data: cancelled, error: cancelError } = await serviceClient
-      .from("instagram_scheduled_posts")
+      .from(account.instagramQueueTable)
       .update({ status: "cancelled", error_message: null })
       .eq("id", postId)
       .eq("created_by", user.id)
@@ -255,7 +229,6 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true, id: postId });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected server error.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return socialAccountErrorResponse(error);
   }
 }

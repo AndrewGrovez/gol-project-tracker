@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient as createUserClient } from "@/utils/supabase/server";
 import { getInstagramPublishingConfigError } from "@/lib/social/instagram-publishing";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-
-const FB_ACCESS_TOKEN = process.env.FACEBOOK_ACCESS_TOKEN;
-const FB_PAGE_ID = process.env.FACEBOOK_PAGE_ID;
+import { requireSocialAccount, requestAccountValue, socialAccountErrorResponse, type SocialAccountConfig } from "@/lib/social/accounts";
 
 const FB_MIN_LEAD_SECONDS = 10 * 60;
 const FB_MAX_LEAD_SECONDS = 75 * 24 * 60 * 60;
@@ -44,6 +42,7 @@ const createServiceRoleClient = () =>
   );
 
 async function uploadImageToSupabase(
+  account: SocialAccountConfig,
   buffer: ArrayBuffer,
   mime: string,
   name: string
@@ -52,7 +51,7 @@ async function uploadImageToSupabase(
 
   await supabase.storage.createBucket(STORAGE_BUCKET, { public: true }).catch(() => null);
 
-  const path = `instagram/${Date.now()}-${name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+  const path = `${account.key}/instagram/${crypto.randomUUID()}-${name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
   const { error } = await supabase.storage
     .from(STORAGE_BUCKET)
     .upload(path, buffer, { contentType: mime, upsert: false });
@@ -66,6 +65,7 @@ async function uploadImageToSupabase(
 }
 
 async function scheduleFacebookPost(
+  account: SocialAccountConfig,
   message: string,
   scheduledSeconds: number,
   imageBuffer: ArrayBuffer | null,
@@ -80,10 +80,10 @@ async function scheduleFacebookPost(
     multipart.append("published", "false");
     multipart.append("scheduled_publish_time", scheduledSeconds.toString());
     multipart.append("unpublished_content_type", "SCHEDULED");
-    multipart.append("access_token", FB_ACCESS_TOKEN!);
+    multipart.append("access_token", account.facebookAccessToken!);
     multipart.append("source", new Blob([imageBuffer], { type: imageMime }), imageName);
 
-    response = await fetch(`https://graph.facebook.com/v22.0/${FB_PAGE_ID}/photos`, {
+    response = await fetch(`https://graph.facebook.com/v22.0/${account.facebookPageId}/photos`, {
       method: "POST",
       body: multipart,
     });
@@ -93,10 +93,10 @@ async function scheduleFacebookPost(
       published: "false",
       scheduled_publish_time: scheduledSeconds.toString(),
       unpublished_content_type: "SCHEDULED",
-      access_token: FB_ACCESS_TOKEN!,
+      access_token: account.facebookAccessToken!,
     });
 
-    response = await fetch(`https://graph.facebook.com/v22.0/${FB_PAGE_ID}/feed`, {
+    response = await fetch(`https://graph.facebook.com/v22.0/${account.facebookPageId}/feed`, {
       method: "POST",
       body: params,
     });
@@ -119,6 +119,7 @@ async function scheduleFacebookPost(
 }
 
 async function processFacebook(
+  account: SocialAccountConfig,
   message: string,
   scheduledTimes: string[],
   nowSeconds: number,
@@ -126,10 +127,10 @@ async function processFacebook(
   imageMime: string,
   imageName: string
 ): Promise<ScheduleResult[]> {
-  if (!FB_ACCESS_TOKEN || !FB_PAGE_ID) {
+  if (!account.facebookAccessToken || !account.facebookPageId) {
     return scheduledTimes.map((scheduledTime) => ({
       scheduledTime,
-      error: "FACEBOOK_ACCESS_TOKEN and FACEBOOK_PAGE_ID are not configured.",
+      error: `${account.label}'s Facebook Page has not been connected.`,
     }));
   }
 
@@ -157,6 +158,7 @@ async function processFacebook(
 
     try {
       const externalId = await scheduleFacebookPost(
+        account,
         message,
         scheduledSeconds,
         imageBuffer,
@@ -178,12 +180,13 @@ async function processFacebook(
 // The /photos endpoint returns a bare photo id, but the scheduled-posts listing
 // keys off "{page id}_{photo id}". Store the latter so the two actually match —
 // /feed already hands back the prefixed form, hence the guard.
-const toPagePostId = (externalId: string) =>
-  externalId.includes("_") ? externalId : `${FB_PAGE_ID}_${externalId}`;
+const toPagePostId = (externalId: string, account: SocialAccountConfig) =>
+  externalId.includes("_") ? externalId : `${account.facebookPageId}_${externalId}`;
 
 // Meta does not retain the uploaded file name, so keep our own record of it
 // against the returned Graph post id.
 async function recordFacebookImageNames(
+  account: SocialAccountConfig,
   results: ScheduleResult[],
   originalImageName: string | null,
   createdByUserId: string
@@ -193,7 +196,7 @@ async function recordFacebookImageNames(
   const rows = results
     .filter((result) => !result.error && result.externalId)
     .map((result) => ({
-      post_id: toPagePostId(result.externalId!),
+      post_id: toPagePostId(result.externalId!, account),
       image_name: originalImageName,
       created_by: createdByUserId,
     }));
@@ -203,12 +206,13 @@ async function recordFacebookImageNames(
   const supabase = createServiceRoleClient();
   // Best effort: a missing file name must never fail an otherwise good schedule.
   await supabase
-    .from("facebook_scheduled_post_images")
+    .from(account.facebookImagesTable)
     .upsert(rows, { onConflict: "post_id" })
     .then(undefined, () => null);
 }
 
 async function queueInstagramPosts(
+  account: SocialAccountConfig,
   caption: string,
   scheduledTimes: string[],
   nowSeconds: number,
@@ -218,7 +222,7 @@ async function queueInstagramPosts(
   originalImageName: string | null,
   createdByUserId: string
 ): Promise<ScheduleResult[]> {
-  const configError = getInstagramPublishingConfigError();
+  const configError = getInstagramPublishingConfigError(account.key);
   if (configError) {
     return scheduledTimes.map((scheduledTime) => ({
       scheduledTime,
@@ -235,7 +239,7 @@ async function queueInstagramPosts(
 
   let imageUrl: string;
   try {
-    imageUrl = await uploadImageToSupabase(imageBuffer, imageMime, imageName);
+    imageUrl = await uploadImageToSupabase(account, imageBuffer, imageMime, imageName);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Image upload failed.";
     return scheduledTimes.map((scheduledTime) => ({
@@ -283,7 +287,7 @@ async function queueInstagramPosts(
 
   const supabase = createServiceRoleClient();
   const { data, error } = await supabase
-    .from("instagram_scheduled_posts")
+    .from(account.instagramQueueTable)
     .insert(jobsToQueue.map((job) => job.row))
     .select("id");
 
@@ -322,6 +326,7 @@ export async function POST(request: Request) {
     }
 
     const formData = await request.formData();
+    const account = requireSocialAccount(requestAccountValue(request, formData.get("account")), user.id);
     const message = (formData.get("message")?.toString() ?? "").trim();
     const scheduledTimesRaw = formData.get("scheduledTimes");
     const platformsRaw = formData.get("platforms");
@@ -345,7 +350,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!Array.isArray(scheduledTimes) || scheduledTimes.length === 0) {
+    if (!Array.isArray(scheduledTimes) || scheduledTimes.length === 0 || !scheduledTimes.every((time) => typeof time === "string")) {
       return NextResponse.json({ error: "At least one scheduled time is required." }, { status: 400 });
     }
 
@@ -354,8 +359,12 @@ export async function POST(request: Request) {
       try {
         platforms = JSON.parse(platformsRaw.toString());
       } catch {
-        platforms = ["facebook"];
+        return NextResponse.json({ error: "Invalid platforms." }, { status: 400 });
       }
+    }
+
+    if (!Array.isArray(platforms) || platforms.length === 0 || !platforms.every((platform) => platform === "facebook" || platform === "instagram")) {
+      return NextResponse.json({ error: "Choose Facebook, Instagram, or both." }, { status: 400 });
     }
 
     const nowSeconds = Math.floor(Date.now() / 1000);
@@ -370,10 +379,10 @@ export async function POST(request: Request) {
 
     if (platforms.includes("facebook")) {
       tasks.push(
-        processFacebook(message, scheduledTimes, nowSeconds, imageBuffer, imageMime, imageName).then(
+        processFacebook(account, message, scheduledTimes, nowSeconds, imageBuffer, imageMime, imageName).then(
           async (results) => {
             platformResults.facebook = results;
-            await recordFacebookImageNames(results, originalImageName, user.id);
+            await recordFacebookImageNames(account, results, originalImageName, user.id);
           }
         )
       );
@@ -382,6 +391,7 @@ export async function POST(request: Request) {
     if (platforms.includes("instagram")) {
       tasks.push(
         queueInstagramPosts(
+          account,
           message,
           scheduledTimes,
           nowSeconds,
@@ -411,7 +421,6 @@ export async function POST(request: Request) {
       { status: hasErrors ? 207 : 200 }
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected server error.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return socialAccountErrorResponse(error);
   }
 }

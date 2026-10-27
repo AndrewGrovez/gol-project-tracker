@@ -6,6 +6,8 @@ import {
   publishInstagramImageNow,
 } from "@/lib/social/instagram-publishing";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { SOCIAL_ACCOUNT_KEYS } from "@/lib/social/account-types";
+import { getSocialAccountConfig, parseSocialAccountKey, requireSocialAccount, socialAccountErrorResponse, type SocialAccountConfig } from "@/lib/social/accounts";
 
 export const maxDuration = 60;
 
@@ -23,6 +25,7 @@ const GITHUB_ACTIONS_JWKS_CACHE_TTL_MS = 60 * 60 * 1000;
 
 interface ClaimedInstagramJob {
   id: string;
+  created_by: string;
   caption: string;
   image_url: string;
   scheduled_for: string;
@@ -156,7 +159,7 @@ async function isValidGitHubActionsToken(token: string | null) {
   );
 }
 
-async function isAuthorized(request: Request) {
+async function getAuthorization(request: Request): Promise<{ kind: "automation" } | { kind: "user"; userId: string } | null> {
   const authHeader = request.headers.get("authorization");
   const expectedCronHeader = process.env.CRON_SECRET
     ? `Bearer ${process.env.CRON_SECRET}`
@@ -166,11 +169,11 @@ async function isAuthorized(request: Request) {
     : null;
 
   if (expectedCronHeader && authHeader === expectedCronHeader) {
-    return true;
+    return { kind: "automation" };
   }
 
   if (await isValidGitHubActionsToken(bearerToken)) {
-    return true;
+    return { kind: "automation" };
   }
 
   const supabase = await createUserClient();
@@ -180,21 +183,39 @@ async function isAuthorized(request: Request) {
   } = await supabase.auth.getUser();
 
   if (!error && user) {
-    return true;
+    return { kind: "user", userId: user.id };
   }
 
-  return !expectedCronHeader && process.env.NODE_ENV !== "production";
+  return null;
 }
 
 async function handleRequest(request: Request) {
-  const authorized = await isAuthorized(request);
-  if (!authorized) {
+  const authorization = await getAuthorization(request);
+  if (!authorization) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const configError = getInstagramPublishingConfigError();
-  if (configError) {
-    return NextResponse.json({ error: configError }, { status: 500 });
+  const accountValue = new URL(request.url).searchParams.get("account");
+  let accounts: SocialAccountConfig[];
+  try {
+    if (authorization.kind === "user") {
+      accounts = [requireSocialAccount(accountValue, authorization.userId)];
+    } else if (accountValue !== null) {
+      accounts = [getSocialAccountConfig(parseSocialAccountKey(accountValue))];
+    } else {
+      accounts = SOCIAL_ACCOUNT_KEYS.map(getSocialAccountConfig).filter(
+        (account) => !getInstagramPublishingConfigError(account.key) && (account.key === "gol" || account.ownerId)
+      );
+    }
+    for (const account of accounts) {
+      const configError = getInstagramPublishingConfigError(account.key);
+      if (configError || (account.key === "dref-wen" && !account.ownerId)) {
+        return NextResponse.json({ error: configError || "Dref Wen's scheduler owner has not been configured." }, { status: 503 });
+      }
+    }
+    if (accounts.length === 0) return NextResponse.json({ error: "No Instagram publishing accounts are configured." }, { status: 503 });
+  } catch (error) {
+    return socialAccountErrorResponse(error);
   }
 
   const batchSizeRaw = new URL(request.url).searchParams.get("limit");
@@ -204,43 +225,52 @@ async function handleRequest(request: Request) {
     : DEFAULT_BATCH_SIZE;
 
   const supabase = createServiceRoleClient();
-  const { data, error } = await supabase.rpc("claim_due_instagram_scheduled_posts", {
-    p_limit: batchSize,
-  });
-
-  if (error) {
-    return NextResponse.json(
-      { error: `Failed to claim due Instagram jobs: ${error.message}` },
-      { status: 500 }
-    );
+  const jobs: Array<{ job: ClaimedInstagramJob; account: SocialAccountConfig }> = [];
+  const claimErrors: string[] = [];
+  for (const account of accounts) {
+    const remaining = batchSize - jobs.length;
+    if (remaining <= 0) break;
+    const { data, error } = await supabase.rpc(account.instagramClaimFunction, {
+      p_limit: remaining,
+      ...(account.key === "dref-wen" ? { p_owner_id: account.ownerId } : {}),
+    });
+    if (error) {
+      claimErrors.push(`${account.label}: failed to claim due Instagram jobs: ${error.message}`);
+      continue;
+    }
+    const claimed = Array.isArray(data) ? (data as ClaimedInstagramJob[]) : [];
+    jobs.push(...claimed.map((job) => ({ job, account })));
   }
-
-  const jobs = Array.isArray(data) ? (data as ClaimedInstagramJob[]) : [];
 
   if (jobs.length === 0) {
     return NextResponse.json({
-      success: true,
+      success: claimErrors.length === 0,
       processed: 0,
       published: 0,
       failed: 0,
       results: [],
-    });
+      ...(claimErrors.length ? { error: claimErrors.join(" ") } : {}),
+    }, { status: claimErrors.length ? 500 : 200 });
   }
 
   let published = 0;
   let failed = 0;
-  const results: Array<{ id: string; scheduledFor: string; status: string; error?: string }> = [];
+  const results: Array<{ id: string; account: string; scheduledFor: string; status: string; error?: string }> = [];
 
-  for (const job of jobs) {
+  for (const { job, account } of jobs) {
     try {
+      if (account.key === "dref-wen" && job.created_by !== account.ownerId) {
+        throw new Error("The queued post does not belong to Dref Wen's scheduler owner.");
+      }
       const existingMedia = await findRecentInstagramMediaByCaption(
         job.caption,
-        job.scheduled_for
-      ).catch(() => null);
+        job.scheduled_for,
+        account.key
+      );
 
       if (existingMedia) {
         const { error: existingUpdateError } = await supabase
-          .from("instagram_scheduled_posts")
+          .from(account.instagramQueueTable)
           .update({
             status: "published",
             published_at: existingMedia.timestamp
@@ -260,16 +290,17 @@ async function handleRequest(request: Request) {
         published += 1;
         results.push({
           id: job.id,
+          account: account.key,
           scheduledFor: job.scheduled_for,
           status: "published",
         });
         continue;
       }
 
-      const mediaId = await publishInstagramImageNow(job.caption, job.image_url);
+      const mediaId = await publishInstagramImageNow(job.caption, job.image_url, account.key);
 
       const { error: updateError } = await supabase
-        .from("instagram_scheduled_posts")
+        .from(account.instagramQueueTable)
         .update({
           status: "published",
           published_at: new Date().toISOString(),
@@ -285,6 +316,7 @@ async function handleRequest(request: Request) {
       published += 1;
       results.push({
         id: job.id,
+        account: account.key,
         scheduledFor: job.scheduled_for,
         status: "published",
       });
@@ -292,7 +324,7 @@ async function handleRequest(request: Request) {
       const message = error instanceof Error ? error.message : "Instagram publish failed.";
 
       await supabase
-        .from("instagram_scheduled_posts")
+        .from(account.instagramQueueTable)
         .update({
           status: "failed",
           error_message: message,
@@ -302,6 +334,7 @@ async function handleRequest(request: Request) {
       failed += 1;
       results.push({
         id: job.id,
+        account: account.key,
         scheduledFor: job.scheduled_for,
         status: "failed",
         error: message,
@@ -310,12 +343,13 @@ async function handleRequest(request: Request) {
   }
 
   return NextResponse.json({
-    success: failed === 0,
+    success: failed === 0 && claimErrors.length === 0,
     processed: jobs.length,
     published,
     failed,
     results,
-  });
+    ...(claimErrors.length ? { error: claimErrors.join(" ") } : {}),
+  }, { status: claimErrors.length ? 500 : 200 });
 }
 
 export async function GET(request: Request) {

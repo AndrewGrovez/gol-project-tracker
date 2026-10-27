@@ -10,6 +10,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Loader2, Pencil, Plus, RefreshCw, Trash2, Upload } from "lucide-react";
 import "react-datepicker/dist/react-datepicker.css";
+import Link from "next/link";
+import type { SocialAccountSummary } from "@/lib/social/account-types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -92,12 +94,18 @@ const getTimeBoundsForDate = (selected: Date | null, minLeadMs: number) => {
 type Platform = "facebook" | "instagram";
 type Tab = "facebook" | "instagram";
 
-export default function SocialScheduler() {
+export default function SocialScheduler({ account, accounts }: { account: SocialAccountSummary; accounts: SocialAccountSummary[] }) {
+  const accountUrl = useCallback((path: string) => `${path}${path.includes("?") ? "&" : "?"}account=${encodeURIComponent(account.key)}`, [account.key]);
   // Form state
   const [message, setMessage] = useState("");
   const [scheduledTimes, setScheduledTimes] = useState<Array<Date | null>>([buildDefaultDate()]);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [platforms, setPlatforms] = useState<Set<Platform>>(new Set(["facebook", "instagram"]));
+  const [platforms, setPlatforms] = useState<Set<Platform>>(() => {
+    const configured: Platform[] = [];
+    if (account.facebookConfigured) configured.push("facebook");
+    if (account.instagramConfigured) configured.push("instagram");
+    return new Set(configured.length ? configured : ["facebook", "instagram"]);
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error" | "partial"; lines: string[] } | null>(null);
 
@@ -128,7 +136,10 @@ export default function SocialScheduler() {
     setFeedback(null);
   }, []);
 
-  const minLeadMs = platforms.has("instagram") ? IG_MIN_LEAD_MS : FB_MIN_LEAD_MS;
+  const minLeadMs = platforms.has("facebook") ? FB_MIN_LEAD_MS : IG_MIN_LEAD_MS;
+  const selectedPlatformsConfigured = (!platforms.has("facebook") || account.facebookConfigured) && (!platforms.has("instagram") || account.instagramConfigured);
+  const missingAccounts = [!account.facebookConfigured ? "Facebook" : null, !account.instagramConfigured ? "Instagram" : null].filter(Boolean);
+  const isBusy = isSubmitting || isSavingEdit || Boolean(deletingPostId) || isProcessingIgQueue;
 
   const validTimes = useMemo(
     () =>
@@ -154,10 +165,11 @@ export default function SocialScheduler() {
   // ─── Fetch scheduled posts ──────────────────────────────────────────────────
 
   const fetchFacebookPosts = useCallback(async () => {
+    if (!account.facebookConfigured) return;
     setIsFetchingFb(true);
     setFbError(null);
     try {
-      const res = await fetch("/api/facebook/scheduled-posts", { method: "GET", cache: "no-store" });
+      const res = await fetch(accountUrl("/api/facebook/scheduled-posts"), { method: "GET", cache: "no-store" });
       const data = await res.json();
       if (!res.ok) {
         setFbError(data?.error || "Unable to load Facebook scheduled posts.");
@@ -169,14 +181,15 @@ export default function SocialScheduler() {
     } finally {
       setIsFetchingFb(false);
     }
-  }, []);
+  }, [account.facebookConfigured, accountUrl]);
 
   const fetchInstagramPosts = useCallback(async () => {
+    if (!account.instagramConfigured) return;
     setIsFetchingIg(true);
     setIgError(null);
     setIgNotice(null);
     try {
-      const res = await fetch("/api/instagram/scheduled-posts", { method: "GET", cache: "no-store" });
+      const res = await fetch(accountUrl("/api/instagram/scheduled-posts"), { method: "GET", cache: "no-store" });
       const data = await res.json() as { data?: InstagramScheduledPost[]; error?: string; notice?: string };
       if (!res.ok) {
         setIgError(data?.error || "Unable to load Instagram scheduled posts.");
@@ -189,13 +202,13 @@ export default function SocialScheduler() {
     } finally {
       setIsFetchingIg(false);
     }
-  }, []);
+  }, [account.instagramConfigured, accountUrl]);
 
   const processInstagramQueue = useCallback(async () => {
     setIsProcessingIgQueue(true);
     setIgQueueFeedback(null);
     try {
-      const response = await fetch("/api/instagram/process-scheduled", { method: "POST" });
+      const response = await fetch(accountUrl("/api/instagram/process-scheduled"), { method: "POST" });
       const payload = await response.json() as {
         error?: string;
         processed?: number;
@@ -226,7 +239,7 @@ export default function SocialScheduler() {
     } finally {
       setIsProcessingIgQueue(false);
     }
-  }, [fetchInstagramPosts]);
+  }, [fetchInstagramPosts, accountUrl]);
 
   const fetchAll = useCallback(() => {
     fetchFacebookPosts();
@@ -270,7 +283,7 @@ export default function SocialScheduler() {
             ? `/api/facebook/scheduled-posts?id=${encodeURIComponent(postId)}`
             : `/api/instagram/scheduled-posts?id=${encodeURIComponent(postId)}`;
 
-        const response = await fetch(endpoint, {
+        const response = await fetch(accountUrl(endpoint), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(
@@ -308,7 +321,7 @@ export default function SocialScheduler() {
         setIsSavingEdit(false);
       }
     },
-    [editingText, fetchFacebookPosts, fetchInstagramPosts]
+    [editingText, fetchFacebookPosts, fetchInstagramPosts, accountUrl]
   );
 
   // ─── Cancel a scheduled post ────────────────────────────────────────────────
@@ -332,7 +345,7 @@ export default function SocialScheduler() {
             ? `/api/facebook/scheduled-posts?id=${encodeURIComponent(postId)}`
             : `/api/instagram/scheduled-posts?id=${encodeURIComponent(postId)}`;
 
-        const response = await fetch(endpoint, { method: "DELETE" });
+        const response = await fetch(accountUrl(endpoint), { method: "DELETE" });
         const payload = (await response.json()) as { success?: boolean; error?: string };
 
         if (!response.ok) {
@@ -361,7 +374,7 @@ export default function SocialScheduler() {
         setDeletingPostId(null);
       }
     },
-    [fetchFacebookPosts, fetchInstagramPosts]
+    [fetchFacebookPosts, fetchInstagramPosts, accountUrl]
   );
 
   // ─── Schedule handlers ───────────────────────────────────────────────────────
@@ -389,6 +402,11 @@ export default function SocialScheduler() {
     event.preventDefault();
     setFeedback(null);
 
+    if (!selectedPlatformsConfigured) {
+      setFeedback({ type: "error", lines: [`Connect ${account.label}'s selected accounts before scheduling posts.`] });
+      return;
+    }
+
     if (!message.trim()) {
       setFeedback({ type: "error", lines: ["Please enter a message."] });
       return;
@@ -405,6 +423,7 @@ export default function SocialScheduler() {
     setIsSubmitting(true);
     try {
       const formData = new FormData();
+      formData.append("account", account.key);
       formData.append("message", message.trim());
       formData.append("scheduledTimes", JSON.stringify(validTimes.map((d) => d.toISOString())));
       formData.append("platforms", JSON.stringify(Array.from(platforms)));
@@ -467,8 +486,30 @@ export default function SocialScheduler() {
       <div>
         <h1 className="text-3xl font-semibold text-slate-900">Social Scheduler</h1>
         <p className="mt-2 max-w-2xl text-sm text-slate-600">
-          Schedule posts to your Facebook Page and Instagram Business account from one place.
+          Schedule posts to {account.label}&apos;s Facebook Page and Instagram account from one place.
         </p>
+        {accounts.length > 1 && (
+          <nav aria-label="Social accounts" className="mt-5 flex flex-wrap gap-2">
+            {accounts.map((candidate) => (
+              <Link
+                key={candidate.key}
+                href={candidate.href}
+                aria-current={candidate.key === account.key ? "page" : undefined}
+                aria-disabled={isBusy || undefined}
+                tabIndex={isBusy ? -1 : undefined}
+                onClick={(event) => { if (isBusy) event.preventDefault(); }}
+                className={cn("rounded-md border px-4 py-2 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2", candidate.key === account.key ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50", isBusy && "opacity-50")}
+              >
+                {candidate.label}
+              </Link>
+            ))}
+          </nav>
+        )}
+        {missingAccounts.length > 0 && (
+          <p role="status" className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            {account.label}&apos;s {missingAccounts.join(" and ")} {missingAccounts.length === 1 ? "account needs" : "accounts need"} connecting before you can schedule posts there.
+          </p>
+        )}
       </div>
 
       {/* Form card */}
@@ -616,7 +657,7 @@ export default function SocialScheduler() {
 
             {/* Actions */}
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <Button type="submit" disabled={isSubmitting} className="flex items-center gap-2">
+              <Button type="submit" disabled={isSubmitting || !selectedPlatformsConfigured} className="flex items-center gap-2">
                 {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                 {isSubmitting ? "Scheduling..." : "Schedule posts"}
               </Button>
@@ -657,7 +698,7 @@ export default function SocialScheduler() {
                 type="button"
                 variant="outline"
                 onClick={processInstagramQueue}
-                disabled={isProcessingIgQueue}
+                disabled={isProcessingIgQueue || !account.instagramConfigured}
                 className="flex items-center gap-2"
               >
                 {isProcessingIgQueue && <Loader2 className="h-4 w-4 animate-spin" />}
