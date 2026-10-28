@@ -74,3 +74,10 @@ Validate the Meta token's Page identity, linked Instagram identity and publishin
 permissions before saving it. Keep the existing Gôl asset authorisations when
 adding Dref Wen to the same Meta app. No live post is required for connection
 verification. Use `npm run test:social` for the isolated route regression checks.
+
+Meta's manual authorisation flow must return to
+`https://projects.golcentres.co.uk/auth/meta/callback`. This standalone HTML route
+does not load the project sign-in client. Returning a Meta token to a normal app
+page can make Supabase interpret it as a failed project login and clear the
+existing session. Verify the returned origin and OAuth state before reading any
+token, and use the clean scheduler link after setup.
