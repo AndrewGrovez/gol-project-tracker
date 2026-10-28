@@ -26,8 +26,13 @@ configured in `DREF_WEN_SCHEDULER_USER_ID`.
 The app's Website platform and Site URL use `https://projects.golcentres.co.uk/`.
 Its App Domain is `projects.golcentres.co.uk`. Facebook Login for Business is
 configured with the exact allowed callback
-`https://projects.golcentres.co.uk/facebook`; Meta's redirect validator passed.
-The callback's origin and state were verified before reading the returned token.
+`https://projects.golcentres.co.uk/auth/meta/callback`.
+This standalone HTML route does not load the app layout or Supabase's browser
+client. The initial `/facebook` callback exposed Meta's token fragment to the
+project sign-in client, which treats it as an invalid project login and clears
+the session. Use the isolated callback for future Meta connections.
+The callback's origin and state must be verified before reading the returned
+token. Its clean scheduler link drops the fragment when leaving the page.
 
 ## Credential storage
 
@@ -67,7 +72,7 @@ records were edited manually.
 
 ## Validation
 
-- `npm run test:social`: 19 passing isolated route regression tests.
+- `npm run test:social`: 20 passing isolated route regression tests.
 - `npm run build`: production build, lint and TypeScript checks passed.
 - `git diff --check`: passed.
 - Database checks covered job claims, ownership, read policies and service-only

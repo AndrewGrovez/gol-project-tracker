@@ -113,6 +113,23 @@ function scheduleRequest(account, platforms = ["facebook", "instagram"], query =
   return new Request(`https://scheduler.example/api/social/schedule${query}`, { method: "POST", body: form });
 }
 
+test("Meta returns to an isolated page without interpreting a project login", async () => {
+  const h = harness({ user: null });
+  const res = await h.load("app/auth/meta/callback/route.ts").GET(
+    new Request("https://scheduler.example/auth/meta/callback?error_description=example#access_token=foreign-token")
+  );
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /^text\/html/);
+  assert.equal(res.headers.get("cache-control"), "no-store");
+  assert.equal(res.headers.get("referrer-policy"), "no-referrer");
+  assert.match(res.headers.get("content-security-policy"), /default-src 'none'/);
+  assert.equal(res.headers.get("set-cookie"), null);
+  const html = await res.text();
+  assert.match(html, /href="\/dref-wen"/);
+  assert.doesNotMatch(html, /<script|<iframe|<form|_next\/|foreign-token|error_description/i);
+  assert.equal(h.events.length, 0);
+});
+
 test("Dref Wen scheduling uses its Page token, upload path, metadata and queue", async () => {
   const h = harness();
   const res = await h.load("app/api/social/schedule/route.ts").POST(scheduleRequest("dref-wen"));
